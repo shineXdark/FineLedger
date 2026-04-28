@@ -65,6 +65,7 @@
         <button id="btn-sign-out" class="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 text-sm font-semibold">Sign Out</button>
       </div>
     </header>
+    <div id="data-status" class="hidden card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800"></div>
 
     <section class="card p-3 md:p-4 flex flex-wrap gap-2" id="tabs">
       <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
@@ -168,7 +169,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
     const cfg = window.FINELEDGER_CONFIG ?? {
@@ -200,6 +201,47 @@
     const EMAIL_LINK_STORAGE_KEY = "fineledgerEmailForSignIn";
     const AUTH_BUTTON_IDS = ["btn-google-auth", "btn-email-signin", "btn-email-create", "btn-email-link"];
     let authBusy = false;
+
+    function showDataStatus(message, tone = "warning") {
+      const box = $("data-status");
+      box.className = "card p-3 text-sm";
+      if (tone === "error") {
+        box.classList.add("border-rose-300", "bg-rose-50", "text-rose-700");
+      } else if (tone === "success") {
+        box.classList.add("border-emerald-300", "bg-emerald-50", "text-emerald-700");
+      } else {
+        box.classList.add("border-amber-300", "bg-amber-50", "text-amber-800");
+      }
+      box.textContent = message;
+      box.classList.remove("hidden");
+    }
+
+    function hideDataStatus() {
+      $("data-status").classList.add("hidden");
+    }
+
+    function formatDbError(err) {
+      const code = err?.code ?? "";
+      if (code === "permission-denied") {
+        return "Cloud sync failed: Firestore rejected access (permission-denied). Update Firestore rules to allow authenticated users to read/write their own /users/{uid}/... documents.";
+      }
+      if (code === "unavailable") {
+        return "Cloud sync failed: Firestore is temporarily unavailable. Check network connection and try again.";
+      }
+      if (code === "failed-precondition") {
+        return "Cloud sync failed: Firestore is missing a required setup (for example an index or missing database initialization). Check Firebase console for details.";
+      }
+      return `Cloud sync failed: ${err?.message ?? "Unknown Firestore error."}`;
+    }
+
+    async function runDbWrite(task) {
+      try {
+        await task();
+        hideDataStatus();
+      } catch (err) {
+        showDataStatus(formatDbError(err), "error");
+      }
+    }
 
     function clearAuthNotices() {
       $("auth-error").classList.add("hidden");
@@ -629,20 +671,36 @@
         $("auth-overlay").classList.add("hidden");
         $("user-email-display").textContent = user.email ?? user.displayName ?? "User";
 
-        state.unsub.push(onSnapshot(query(collection(state.db, "users", user.uid, "transactions"), orderBy("date", "desc")), (snap) => {
-          state.tx = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          rerenderAll();
-        }));
+        state.unsub.push(onSnapshot(
+          query(collection(state.db, "users", user.uid, "transactions"), orderBy("date", "desc")),
+          (snap) => {
+            state.tx = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            hideDataStatus();
+            rerenderAll();
+          },
+          (err) => showDataStatus(formatDbError(err), "error")
+        ));
 
-        state.unsub.push(onSnapshot(query(collection(state.db, "users", user.uid, "goals"), orderBy("name", "asc")), (snap) => {
-          state.goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          rerenderAll();
-        }));
+        state.unsub.push(onSnapshot(
+          query(collection(state.db, "users", user.uid, "goals"), orderBy("name", "asc")),
+          (snap) => {
+            state.goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            hideDataStatus();
+            rerenderAll();
+          },
+          (err) => showDataStatus(formatDbError(err), "error")
+        ));
 
-        const budgetSnap = await getDocs(collection(state.db, "users", user.uid, "budgets"));
-        state.budgets = {};
-        budgetSnap.forEach((d) => { state.budgets[d.id] = Number(d.data().limit || 0); });
-        rerenderAll();
+        state.unsub.push(onSnapshot(
+          collection(state.db, "users", user.uid, "budgets"),
+          (snap) => {
+            state.budgets = {};
+            snap.forEach((d) => { state.budgets[d.id] = Number(d.data().limit || 0); });
+            hideDataStatus();
+            rerenderAll();
+          },
+          (err) => showDataStatus(formatDbError(err), "error")
+        ));
       });
     }
 
@@ -659,7 +717,7 @@
           amount: Number($("tx-amount").value),
           createdAt: Date.now()
         };
-        await addDoc(collection(state.db, "users", state.user.uid, "transactions"), payload);
+        await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "transactions"), payload));
         $("tx-desc").value = "";
         $("tx-amount").value = "";
       });
@@ -667,12 +725,12 @@
       $("goal-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!state.user) return;
-        await addDoc(collection(state.db, "users", state.user.uid, "goals"), {
+        await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "goals"), {
           name: $("goal-name").value.trim(),
           target: Number($("goal-target").value),
           current: 0,
           createdAt: Date.now()
-        });
+        }));
         $("goal-name").value = "";
         $("goal-target").value = "";
       });
@@ -682,7 +740,7 @@
         if (!state.user) return;
         const category = $("budget-category").value;
         const limit = Number($("budget-limit").value);
-        await setDoc(doc(state.db, "users", state.user.uid, "budgets", category), { limit, updatedAt: Date.now() });
+        await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "budgets", category), { limit, updatedAt: Date.now() }));
         state.budgets[category] = limit;
         $("budget-limit").value = "";
         rerenderAll();
@@ -691,7 +749,7 @@
       $("btn-reset-budgets").addEventListener("click", async () => {
         if (!state.user) return;
         const tasks = Object.keys(state.budgets).map((cat) => deleteDoc(doc(state.db, "users", state.user.uid, "budgets", cat)));
-        await Promise.all(tasks);
+        await runDbWrite(() => Promise.all(tasks));
         state.budgets = {};
         rerenderAll();
       });
