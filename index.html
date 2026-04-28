@@ -30,6 +30,7 @@
       <h1 class="text-3xl font-bold mt-2">Secure Finance Workspace</h1>
       <p class="mt-2 text-slate-600">Sign in once, sync across devices, and stop relying on Live Server.</p>
       <div id="auth-error" class="hidden mt-4 text-sm rounded-lg p-3 border border-rose-300 bg-rose-50 text-rose-700"></div>
+      <div id="auth-info" class="hidden mt-4 text-sm rounded-lg p-3 border border-indigo-300 bg-indigo-50 text-indigo-700"></div>
       <button id="btn-google-auth" class="mt-6 w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
         <span>🔐</span><span>Continue with Google</span>
       </button>
@@ -208,6 +209,18 @@
     function showAuthError(msg) {
       $("auth-error").textContent = msg;
       $("auth-error").classList.remove("hidden");
+      $("auth-info").classList.add("hidden");
+    }
+
+    function showAuthInfo(msg) {
+      $("auth-info").textContent = msg;
+      $("auth-info").classList.remove("hidden");
+      $("auth-error").classList.add("hidden");
+    }
+
+    function clearAuthMessages() {
+      $("auth-error").classList.add("hidden");
+      $("auth-info").classList.add("hidden");
     }
 
     function initCategoryOptions() {
@@ -453,7 +466,7 @@
       }
 
       $("btn-google-auth").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthMessages();
         try {
           await signInWithPopup(state.auth, provider);
         } catch (err) {
@@ -462,7 +475,7 @@
       });
 
       $("btn-anon-auth").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthMessages();
         try {
           await signInAnonymously(state.auth);
         } catch (err) {
@@ -471,7 +484,7 @@
       });
 
       $("btn-email-signin").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthMessages();
         const email = $("email-auth-input").value.trim();
         const password = $("password-auth-input").value;
         if (!email || !password) return showAuthError("Enter both email and password.");
@@ -483,7 +496,7 @@
       });
 
       $("btn-email-register").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthMessages();
         const email = $("email-auth-input").value.trim();
         const password = $("password-auth-input").value;
         if (!email || !password) return showAuthError("Enter both email and password to create an account.");
@@ -495,7 +508,7 @@
       });
 
       $("btn-email-link").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthMessages();
         const email = $("email-auth-input").value.trim();
         if (!email) return showAuthError("Enter your email to receive a sign-in link.");
         if (!window.location.origin || window.location.origin === "null") {
@@ -508,7 +521,7 @@
           };
           await sendSignInLinkToEmail(state.auth, email, actionCodeSettings);
           window.sessionStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
-          showAuthError(`Sign-in link sent to ${email}. Open that link on this same device/browser to complete sign-in.`);
+          showAuthInfo(`Sign-in link sent to ${email}. Open that link on this same device/browser to complete sign-in.`);
         } catch (err) {
           showAuthError(`Email-link send failed: ${err?.message ?? "Unknown error."}`);
         }
