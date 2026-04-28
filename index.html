@@ -28,15 +28,15 @@
     <div class="card max-w-lg w-full p-8 text-center">
       <p class="text-xs uppercase tracking-[0.2em] text-indigo-600 font-semibold">FineLedger Pro</p>
       <h1 class="text-3xl font-bold mt-2">Secure Finance Workspace</h1>
-      <p class="mt-2 text-slate-600">Sign in once, sync across devices, and stop relying on Live Server.</p>
+      <p class="mt-2 text-slate-600">Run fully local in your browser with no external API calls.</p>
       <div id="auth-error" class="hidden mt-4 text-sm rounded-lg p-3 border border-rose-300 bg-rose-50 text-rose-700"></div>
       <div class="mt-6 space-y-3 text-left">
         <button id="btn-google-auth" class="w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
-          <span>🔐</span><span>Continue with Google</span>
+          <span>🔐</span><span>Continue Local Mode</span>
         </button>
         <p id="auth-message" class="hidden text-xs rounded-lg p-3 border border-emerald-300 bg-emerald-50 text-emerald-700"></p>
       </div>
-      <p class="mt-4 text-xs text-slate-500">Host this page using Firebase Hosting, Netlify, or GitHub Pages.</p>
+      <p class="mt-4 text-xs text-slate-500">Host anywhere as a static file. Data remains local to this browser.</p>
     </div>
   </div>
 
@@ -167,157 +167,43 @@
     </section>
   </main>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
-
+  <script>
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
-    const cfg = window.FINELEDGER_CONFIG;
+    const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
+    const STORAGE_KEY = "fineledger_local_data_v1";
 
     const state = {
-      user: null,
       tx: [],
       goals: [],
       budgets: {},
       charts: {},
-      db: null,
-      auth: null,
-      unsub: [],
       currency: "USD"
     };
 
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: state.currency || "USD" }).format(Number(n || 0));
-    const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const AUTH_BUTTON_IDS = ["btn-google-auth"];
-    const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
-    let authBusy = false;
 
-    function validateFirebaseSetup() {
-      if (!cfg || typeof cfg !== "object") {
-        throw new Error("Runtime config is missing. Define window.FINELEDGER_CONFIG before loading FineLedger.");
-      }
-      if (!cfg?.firebase?.apiKey || !cfg?.firebase?.projectId || String(cfg.firebase.apiKey).startsWith("YOUR_") || String(cfg.firebase.projectId).startsWith("YOUR_")) {
-        throw new Error("Firebase config is missing. Add real credentials to window.FINELEDGER_CONFIG before using the app.");
-      }
-      if (window.location.protocol === "file:") {
-        throw new Error("This app cannot reliably persist cloud auth/sync from file://. Host it over HTTPS (Firebase Hosting/Netlify/Vercel/GitHub Pages) or http://localhost.");
-      }
-    }
-
-    function showDataStatus(message, tone = "warning") {
-      const box = $("data-status");
-      box.className = "card p-3 text-sm";
-      if (tone === "error") {
-        box.classList.add("border-rose-300", "bg-rose-50", "text-rose-700");
-      } else if (tone === "success") {
-        box.classList.add("border-emerald-300", "bg-emerald-50", "text-emerald-700");
-      } else {
-        box.classList.add("border-amber-300", "bg-amber-50", "text-amber-800");
-      }
-      box.textContent = message;
-      box.classList.remove("hidden");
-    }
-
-    function hideDataStatus() {
-      $("data-status").classList.add("hidden");
-    }
-
-    function formatDbError(err) {
-      const code = err?.code ?? "";
-      if (code === "permission-denied") {
-        return "Cloud sync failed: Firestore rejected access (permission-denied). Update Firestore rules to allow authenticated users to read/write their own /users/{uid}/... documents.";
-      }
-      if (code === "unavailable") {
-        return "Cloud sync failed: Firestore is temporarily unavailable. Check network connection and try again.";
-      }
-      if (code === "failed-precondition") {
-        return "Cloud sync failed: Firestore is missing a required setup (for example an index or missing database initialization). Check Firebase console for details.";
-      }
-      return `Cloud sync failed: ${err?.message ?? "Unknown Firestore error."}`;
-    }
-
-    async function runDbWrite(task) {
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
       try {
-        await task();
-        hideDataStatus();
-        return true;
-      } catch (err) {
-        showDataStatus(formatDbError(err), "error");
-        return false;
+        const saved = JSON.parse(raw);
+        state.tx = Array.isArray(saved.tx) ? saved.tx : [];
+        state.goals = Array.isArray(saved.goals) ? saved.goals : [];
+        state.budgets = saved.budgets && typeof saved.budgets === "object" ? saved.budgets : {};
+        state.currency = CURRENCY_OPTIONS.includes(saved.currency) ? saved.currency : "USD";
+      } catch {
+        // ignore corrupt local data
       }
     }
 
-    function clearAuthNotices() {
-      $("auth-error").classList.add("hidden");
-      $("auth-message").classList.add("hidden");
-    }
-
-    function showAuthError(message) {
-      $("auth-error").textContent = message;
-      $("auth-error").classList.remove("hidden");
-      $("auth-message").classList.add("hidden");
-    }
-
-    function showAuthMessage(message) {
-      $("auth-message").textContent = message;
-      $("auth-message").classList.remove("hidden");
-      $("auth-error").classList.add("hidden");
-    }
-
-    function setAuthBusy(busy) {
-      authBusy = busy;
-      for (const id of AUTH_BUTTON_IDS) {
-        const btn = $(id);
-        btn.disabled = busy;
-        btn.classList.toggle("opacity-60", busy);
-        btn.classList.toggle("cursor-not-allowed", busy);
-      }
-    }
-
-    async function runAuthAction(task) {
-      if (authBusy) return;
-      setAuthBusy(true);
-      try {
-        await task();
-      } finally {
-        setAuthBusy(false);
-      }
-    }
-
-    function formatAuthError(err) {
-      const code = err?.code ?? "";
-      const message = err?.message ?? "Unknown auth error.";
-      if (code === "auth/unauthorized-domain") {
-        const host = normalizeDomain(window.location.origin);
-        return `Sign-in failed: This domain is not allowed for Google login yet. Add "${host}" in Firebase Console → Authentication → Settings → Authorized domains, then reload and try again.`;
-      }
-      if (code === "auth/app-not-authorized") {
-        return "Sign-in failed: Firebase rejected this app/domain. Verify your Firebase config and authorized domains in Firebase Console, then reload.";
-      }
-      if (code === "auth/invalid-api-key") {
-        return "Sign-in failed: Invalid Firebase API key. Update window.FINELEDGER_CONFIG with your real Firebase project credentials.";
-      }
-      if (code === "auth/network-request-failed") {
-        return "Sign-in failed: Network error. Check your connection and try again.";
-      }
-      if (code === "auth/too-many-requests") {
-        return "Sign-in blocked temporarily due to too many attempts. Wait a minute and try again.";
-      }
-      if (code === "auth/user-disabled") return "Sign-in failed: This account has been disabled.";
-      if (code === "auth/invalid-email") return "Sign-in failed: Please enter a valid email address.";
-      return `Sign-in failed: ${message}`;
-    }
-
-    async function saveCurrencyPreference(currency) {
-      if (!state.user || !CURRENCY_OPTIONS.includes(currency)) return;
-      state.currency = currency;
-      await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "settings", "preferences"), {
-        currency,
-        updatedAt: Date.now()
-      }, { merge: true }));
-      rerenderAll();
+    function persistState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        tx: state.tx,
+        goals: state.goals,
+        budgets: state.budgets,
+        currency: state.currency
+      }));
     }
 
     function initCategoryOptions() {
@@ -388,9 +274,10 @@
       `).join("") : `<tr><td colspan="6" class="p-6 text-center text-slate-500">No transactions found.</td></tr>`;
 
       document.querySelectorAll("[data-del]").forEach((b) => {
-        b.addEventListener("click", async () => {
-          if (!state.user) return;
-          await deleteDoc(doc(state.db, "users", state.user.uid, "transactions", b.dataset.del));
+        b.addEventListener("click", () => {
+          state.tx = state.tx.filter((t) => t.id !== b.dataset.del);
+          persistState();
+          rerenderAll();
         });
       });
     }
@@ -445,18 +332,22 @@
         `;
       }).join("");
 
-      document.querySelectorAll("[data-goal-del]").forEach((btn) => btn.addEventListener("click", async () => {
-        await deleteDoc(doc(state.db, "users", state.user.uid, "goals", btn.dataset.goalDel));
+      document.querySelectorAll("[data-goal-del]").forEach((btn) => btn.addEventListener("click", () => {
+        state.goals = state.goals.filter((g) => g.id !== btn.dataset.goalDel);
+        persistState();
+        rerenderAll();
       }));
 
-      document.querySelectorAll("[data-goal-add]").forEach((btn) => btn.addEventListener("click", async () => {
+      document.querySelectorAll("[data-goal-add]").forEach((btn) => btn.addEventListener("click", () => {
         const id = btn.dataset.goalAdd;
         const input = document.querySelector(`[data-goal-amt='${id}']`);
         const delta = Number(input.value);
         if (!delta || delta <= 0) return;
         const goal = state.goals.find((g) => g.id === id);
-        await updateDoc(doc(state.db, "users", state.user.uid, "goals", id), { current: Number(goal.current) + delta });
+        goal.current = Number(goal.current) + delta;
         input.value = "";
+        persistState();
+        rerenderAll();
       }));
     }
 
@@ -505,31 +396,9 @@
       });
     }
 
-    async function generateInsights() {
+    function generateInsights() {
       const out = $("insight-output");
-      if (!cfg.apiBaseUrl) {
-        out.textContent = "Backend API URL missing. Add apiBaseUrl to window.FINELEDGER_CONFIG.";
-        return;
-      }
-      if (state.tx.length < 3) {
-        out.textContent = "Add more transactions first for useful analysis.";
-        return;
-      }
-      const monthly = getCashflowSeries();
-      out.textContent = "Analyzing...";
-      try {
-        const res = await fetch(`${String(cfg.apiBaseUrl).replace(/\/$/, "")}/api/insights`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tx: state.tx.slice(-200), monthly, budgets: state.budgets })
-        });
-        if (!res.ok) throw new Error("API request failed");
-        const data = await res.json();
-        const text = data?.text ?? "No insight returned.";
-        out.innerHTML = text.replace(/\n/g, "<br>");
-      } catch {
-        out.textContent = "Could not generate insights right now. Check backend API and server logs.";
-      }
+      out.textContent = "AI insights are disabled in this public-safe build.";
     }
 
     function rerenderAll() {
@@ -541,162 +410,88 @@
       renderCharts();
     }
 
-    async function hookAuthAndData() {
-      validateFirebaseSetup();
-      const app = initializeApp(cfg.firebase);
-      state.auth = getAuth(app);
-      await setPersistence(state.auth, browserLocalPersistence);
-      state.db = getFirestore(app);
-      const provider = new GoogleAuthProvider();
-      $("btn-google-auth").addEventListener("click", () => runAuthAction(async () => {
-        clearAuthNotices();
-        try {
-          await signInWithPopup(state.auth, provider);
-        } catch (err) {
-          showAuthError(formatAuthError(err));
-        }
-      }));
-
-      $("btn-sign-out").addEventListener("click", () => signOut(state.auth));
-
-      onAuthStateChanged(state.auth, async (user) => {
-        state.unsub.forEach((u) => u());
-        state.unsub = [];
-        state.tx = [];
-        state.goals = [];
-        state.budgets = {};
-
-        if (!user) {
-          state.user = null;
-          state.currency = "USD";
-          $("currency-select").value = state.currency;
-          $("currency-select").disabled = true;
-          $("auth-overlay").classList.remove("hidden");
-          $("user-email-display").textContent = "—";
-          rerenderAll();
-          return;
-        }
-
-        state.user = user;
-        $("currency-select").disabled = false;
-        $("auth-overlay").classList.add("hidden");
-        $("user-email-display").textContent = user.email ?? user.displayName ?? "User";
-
-        state.unsub.push(onSnapshot(
-          doc(state.db, "users", user.uid, "settings", "preferences"),
-          (snap) => {
-            const savedCurrency = snap.exists() ? snap.data().currency : null;
-            state.currency = CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "USD";
-            $("currency-select").value = state.currency;
-            rerenderAll();
-          },
-          (err) => showDataStatus(formatDbError(err), "error")
-        ));
-
-        state.unsub.push(onSnapshot(
-          query(collection(state.db, "users", user.uid, "transactions"), orderBy("date", "desc")),
-          (snap) => {
-            state.tx = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            hideDataStatus();
-            rerenderAll();
-          },
-          (err) => showDataStatus(formatDbError(err), "error")
-        ));
-
-        state.unsub.push(onSnapshot(
-          query(collection(state.db, "users", user.uid, "goals"), orderBy("name", "asc")),
-          (snap) => {
-            state.goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            hideDataStatus();
-            rerenderAll();
-          },
-          (err) => showDataStatus(formatDbError(err), "error")
-        ));
-
-        state.unsub.push(onSnapshot(
-          collection(state.db, "users", user.uid, "budgets"),
-          (snap) => {
-            state.budgets = {};
-            snap.forEach((d) => { state.budgets[d.id] = Number(d.data().limit || 0); });
-            hideDataStatus();
-            rerenderAll();
-          },
-          (err) => showDataStatus(formatDbError(err), "error")
-        ));
-      });
-    }
-
     function hookForms() {
       $("tx-date").valueAsDate = new Date();
-      $("currency-select").disabled = true;
-      $("tx-form").addEventListener("submit", async (e) => {
+      $("tx-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        if (!state.user) return;
-        const payload = {
+        state.tx.push({
+          id: crypto.randomUUID(),
           date: $("tx-date").value,
           desc: $("tx-desc").value.trim(),
           category: $("tx-category").value,
           type: $("tx-type").value,
           amount: Number($("tx-amount").value),
           createdAt: Date.now()
-        };
-        const writeOk = await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "transactions"), payload));
-        if (!writeOk) return;
+        });
         $("tx-desc").value = "";
         $("tx-amount").value = "";
+        persistState();
+        rerenderAll();
       });
 
-      $("goal-form").addEventListener("submit", async (e) => {
+      $("goal-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        if (!state.user) return;
-        const writeOk = await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "goals"), {
+        state.goals.push({
+          id: crypto.randomUUID(),
           name: $("goal-name").value.trim(),
           target: Number($("goal-target").value),
           current: 0,
           createdAt: Date.now()
-        }));
-        if (!writeOk) return;
+        });
         $("goal-name").value = "";
         $("goal-target").value = "";
-      });
-
-      $("budget-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!state.user) return;
-        const category = $("budget-category").value;
-        const limit = Number($("budget-limit").value);
-        const writeOk = await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "budgets", category), { limit, updatedAt: Date.now() }));
-        if (!writeOk) return;
-        state.budgets[category] = limit;
-        $("budget-limit").value = "";
+        persistState();
         rerenderAll();
       });
 
-      $("btn-reset-budgets").addEventListener("click", async () => {
-        if (!state.user) return;
-        const tasks = Object.keys(state.budgets).map((cat) => deleteDoc(doc(state.db, "users", state.user.uid, "budgets", cat)));
-        const writeOk = await runDbWrite(() => Promise.all(tasks));
-        if (!writeOk) return;
+      $("budget-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const category = $("budget-category").value;
+        const limit = Number($("budget-limit").value);
+        state.budgets[category] = limit;
+        $("budget-limit").value = "";
+        persistState();
+        rerenderAll();
+      });
+
+      $("btn-reset-budgets").addEventListener("click", () => {
         state.budgets = {};
+        persistState();
         rerenderAll();
       });
 
       $("tx-search").addEventListener("input", renderTable);
       $("tx-month").addEventListener("change", renderTable);
       $("btn-insights").addEventListener("click", generateInsights);
-      $("currency-select").addEventListener("change", (e) => saveCurrencyPreference(e.target.value));
+      $("currency-select").addEventListener("change", (e) => {
+        state.currency = e.target.value;
+        persistState();
+        rerenderAll();
+      });
     }
 
+    function initLocalModeUi() {
+      $("auth-overlay").classList.remove("hidden");
+      $("btn-google-auth").textContent = "Continue in Local Mode";
+      $("btn-google-auth").addEventListener("click", () => {
+        $("auth-overlay").classList.add("hidden");
+      });
+      $("btn-sign-out").textContent = "Lock";
+      $("btn-sign-out").addEventListener("click", () => {
+        $("auth-overlay").classList.remove("hidden");
+      });
+      $("user-email-display").textContent = "Local only";
+      $("auth-message").textContent = "No external APIs are used. Data is stored only in this browser.";
+      $("auth-message").classList.remove("hidden");
+    }
+
+    loadState();
     initCategoryOptions();
     setTabs();
     hookForms();
-
-    try {
-      await hookAuthAndData();
-    } catch (err) {
-      showAuthError(`Firebase init failed: ${err.message}`);
-      showDataStatus("Cloud sync is unavailable until Firebase setup is fixed. No local fallback is used.", "error");
-    }
+    initLocalModeUi();
+    $("currency-select").value = state.currency;
+    rerenderAll();
   </script>
 </body>
 </html>
