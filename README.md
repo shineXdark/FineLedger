@@ -1,15 +1,21 @@
-# FineLedger Pro (Public-safe local build)
+# FineLedger Pro (Cloud-first Firebase build)
 
-This build removes external API usage so the repository can be safely public.
+This build removes AI provider integrations and is focused on **Firebase cloud sync for ledger data**.
 
 ## What changed
 
-- No Firebase authentication or Firestore sync.
-- No backend server and no AI provider integration.
-- No API keys or secret environment variables required.
-- App data is saved in browser `localStorage` only.
-- API credentials can be entered from the in-app **API Settings** tab and are saved in browser `localStorage` (instead of editing files).
-- API Settings also include local-only toggles for including database APIs and all other APIs.
+- Removed AI API settings and AI insight features.
+- Added a **Cloud Settings** tab with all Firebase client fields you need to connect at runtime:
+  - API Key
+  - Auth Domain
+  - Project ID
+  - Storage Bucket
+  - Messaging Sender ID
+  - App ID
+  - Workspace ID
+- Financial ledger data (`transactions`, `budgets`, `goals`, `currency`) is saved to **Firestore only**.
+- Firebase config is entered in-app and saved in browser local storage so sensitive values are not committed to this repository.
+- Added a prominent cloud status indicator so you can clearly see whether cloud sync is active.
 
 ## Run
 
@@ -21,8 +27,8 @@ Example:
 npx serve .
 ```
 
-## Notes
+## Important notes
 
-- Data is stored locally per browser/profile.
-- Clearing browser storage clears app data.
-- If you previously used secret keys, rotate/revoke them in provider dashboards.
+- You must create/configure your Firebase project and Firestore rules.
+- If cloud is disconnected, the app blocks finance writes.
+- This build does **not** persist financial data locally.
