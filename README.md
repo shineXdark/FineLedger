@@ -4,7 +4,7 @@ FineLedger Pro is a single-page budget system with:
 - Google sign-in (Firebase Auth)
 - Email/password sign-in + account creation (Firebase Auth)
 - Passwordless email link sign-in (Firebase Auth magic link)
-- Real-time transaction ledger (Firestore)
+- Real-time transaction ledger (Firestore, not Firebase Realtime Database)
 - Savings goals tracker
 - Monthly category budgets with health indicators
 - KPI dashboard + charts
@@ -19,6 +19,7 @@ Host this app on any static hosting provider and open its HTTPS URL:
 - GitHub Pages
 
 Once hosted, Google OAuth + Firestore work from the live URL.
+Opening `index.html` directly via `file://` is not a supported production flow for persistent cloud auth/sync.
 
 ## Setup
 
@@ -51,6 +52,8 @@ You can keep this in a separate file if you prefer.
   - **Email link (passwordless sign-in)**
 - Create Firestore database.
 - Add authorized domain(s) for your deployed site.
+
+> You do **not** need Firebase Realtime Database for this app. FineLedger stores data in **Cloud Firestore** only.
 
 If you see `auth/unauthorized-domain`:
 - Go to **Firebase Console → Authentication → Settings → Authorized domains**.
@@ -92,3 +95,4 @@ Use:
 ## Notes
 - Currency is currently USD in UI formatting; adjust in `money()` function.
 - Gemini insights are optional and disabled automatically when no API key is provided.
+- This app is cloud-first: if Firebase setup is broken, writes are blocked until config/domain/rules are fixed (no local-storage fallback).

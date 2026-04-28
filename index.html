@@ -168,7 +168,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
@@ -201,6 +201,15 @@
     const EMAIL_LINK_STORAGE_KEY = "fineledgerEmailForSignIn";
     const AUTH_BUTTON_IDS = ["btn-google-auth", "btn-email-signin", "btn-email-create", "btn-email-link"];
     let authBusy = false;
+
+    function validateFirebaseSetup() {
+      if (!cfg?.firebase?.apiKey || !cfg?.firebase?.projectId || String(cfg.firebase.apiKey).startsWith("YOUR_") || String(cfg.firebase.projectId).startsWith("YOUR_")) {
+        throw new Error("Firebase config is missing. Add real credentials to window.FINELEDGER_CONFIG before using the app.");
+      }
+      if (window.location.protocol === "file:") {
+        throw new Error("This app cannot reliably persist cloud auth/sync from file://. Host it over HTTPS (Firebase Hosting/Netlify/Vercel/GitHub Pages) or http://localhost.");
+      }
+    }
 
     function showDataStatus(message, tone = "warning") {
       const box = $("data-status");
@@ -544,8 +553,10 @@
     }
 
     async function hookAuthAndData() {
+      validateFirebaseSetup();
       const app = initializeApp(cfg.firebase);
       state.auth = getAuth(app);
+      await setPersistence(state.auth, browserLocalPersistence);
       state.db = getFirestore(app);
       const provider = new GoogleAuthProvider();
       const linkSettings = {
@@ -766,7 +777,8 @@
     try {
       await hookAuthAndData();
     } catch (err) {
-      showAuthError(`Firebase init failed: ${err.message}. Add your Firebase config to window.FINELEDGER_CONFIG.`);
+      showAuthError(`Firebase init failed: ${err.message}`);
+      showDataStatus("Cloud sync is unavailable until Firebase setup is fixed. No local fallback is used.", "error");
     }
   </script>
 </body>
