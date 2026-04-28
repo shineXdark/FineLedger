@@ -34,17 +34,6 @@
         <button id="btn-google-auth" class="w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
           <span>🔐</span><span>Continue with Google</span>
         </button>
-
-        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
-          <input id="auth-email" type="email" placeholder="Email address" class="sm:col-span-3 px-3 py-2 border border-slate-300 rounded-lg" />
-          <input id="auth-password" type="password" placeholder="Password" class="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" />
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button id="btn-email-signin" class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 text-sm font-semibold">Sign in (Email + Password)</button>
-          <button id="btn-email-create" class="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold">Create account</button>
-        </div>
-
-        <button id="btn-email-link" class="w-full px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-semibold">Send magic sign-in link to email</button>
         <p id="auth-message" class="hidden text-xs rounded-lg p-3 border border-emerald-300 bg-emerald-50 text-emerald-700"></p>
       </div>
       <p class="mt-4 text-xs text-slate-500">Host this page using Firebase Hosting, Netlify, or GitHub Pages.</p>
@@ -58,6 +47,18 @@
         <p class="text-sm text-slate-600">Interactive budgeting + goal tracking + monthly planning.</p>
       </div>
       <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+          <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
+          <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1">
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="CAD">CAD (C$)</option>
+            <option value="AUD">AUD (A$)</option>
+            <option value="JPY">JPY (¥)</option>
+            <option value="INR">INR (₹)</option>
+          </select>
+        </div>
         <div class="text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <span class="text-slate-500">Signed in:</span>
           <span id="user-email-display" class="font-semibold">—</span>
@@ -168,20 +169,20 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
     const cfg = window.FINELEDGER_CONFIG ?? {
       firebase: {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyAD9LLwzUHC8istCXkyhWh98h0SMASljwc",
+        authDomain: "myfinancetracker-63c24.firebaseapp.com",
+        projectId: "Ymyfinancetracker-63c24",
+        storageBucket: "myfinancetracker-63c24.firebasestorage.app",
+        messagingSenderId: "38979968958",
+        appId: "1:38979968958:web:fbf8bca4f9a7cfc514a3ef"
       },
-      geminiApiKey: ""
+      geminiApiKey: "AIzaSyDvUJbeCA6ge-Rayqjl8726swAOKLPibBA"
     };
 
     const state = {
@@ -192,14 +193,15 @@
       charts: {},
       db: null,
       auth: null,
-      unsub: []
+      unsub: [],
+      currency: "USD"
     };
 
     const $ = (id) => document.getElementById(id);
-    const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
+    const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: state.currency || "USD" }).format(Number(n || 0));
     const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const EMAIL_LINK_STORAGE_KEY = "fineledgerEmailForSignIn";
-    const AUTH_BUTTON_IDS = ["btn-google-auth", "btn-email-signin", "btn-email-create", "btn-email-link"];
+    const AUTH_BUTTON_IDS = ["btn-google-auth"];
+    const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
     let authBusy = false;
 
     function validateFirebaseSetup() {
@@ -279,13 +281,6 @@
       }
     }
 
-    function readEmailPassword() {
-      return {
-        email: $("auth-email").value.trim().toLowerCase(),
-        password: $("auth-password").value
-      };
-    }
-
     async function runAuthAction(task) {
       if (authBusy) return;
       setAuthBusy(true);
@@ -303,12 +298,6 @@
         const host = normalizeDomain(window.location.origin);
         return `Sign-in failed: This domain is not allowed for Google login yet. Add "${host}" in Firebase Console → Authentication → Settings → Authorized domains, then reload and try again.`;
       }
-      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-        return "Sign-in failed: Invalid email or password.";
-      }
-      if (code === "auth/operation-not-allowed") {
-        return "Sign-in failed: Email/Password sign-in is not enabled in Firebase. Enable it in Firebase Console → Authentication → Sign-in method.";
-      }
       if (code === "auth/app-not-authorized") {
         return "Sign-in failed: Firebase rejected this app/domain. Verify your Firebase config and authorized domains in Firebase Console, then reload.";
       }
@@ -323,11 +312,17 @@
       }
       if (code === "auth/user-disabled") return "Sign-in failed: This account has been disabled.";
       if (code === "auth/invalid-email") return "Sign-in failed: Please enter a valid email address.";
-      if (code === "auth/weak-password") return "Account creation failed: Password must be at least 6 characters.";
-      if (code === "auth/email-already-in-use") return "Account creation failed: This email already has an account. Try Sign in.";
-      if (code === "auth/missing-password") return "Sign-in failed: Enter your password to continue.";
-      if (code === "auth/missing-email") return "Sign-in failed: Enter your email address.";
       return `Sign-in failed: ${message}`;
+    }
+
+    async function saveCurrencyPreference(currency) {
+      if (!state.user || !CURRENCY_OPTIONS.includes(currency)) return;
+      state.currency = currency;
+      await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "settings", "preferences"), {
+        currency,
+        updatedAt: Date.now()
+      }, { merge: true }));
+      rerenderAll();
     }
 
     function initCategoryOptions() {
@@ -559,11 +554,6 @@
       await setPersistence(state.auth, browserLocalPersistence);
       state.db = getFirestore(app);
       const provider = new GoogleAuthProvider();
-      const linkSettings = {
-        url: `${window.location.origin}${window.location.pathname}`,
-        handleCodeInApp: true
-      };
-
       $("btn-google-auth").addEventListener("click", () => runAuthAction(async () => {
         clearAuthNotices();
         try {
@@ -573,95 +563,7 @@
         }
       }));
 
-      $("btn-email-signin").addEventListener("click", () => runAuthAction(async () => {
-        clearAuthNotices();
-        const { email, password } = readEmailPassword();
-        if (!email) {
-          showAuthError("Sign-in failed: Enter your email address.");
-          return;
-        }
-        if (!password) {
-          showAuthError("Sign-in failed: Enter your password to continue.");
-          return;
-        }
-        try {
-          await signInWithEmailAndPassword(state.auth, email, password);
-          showAuthMessage("Welcome back. Signed in successfully.");
-        } catch (err) {
-          showAuthError(formatAuthError(err));
-        }
-      }));
-
-      $("btn-email-create").addEventListener("click", () => runAuthAction(async () => {
-        clearAuthNotices();
-        const { email, password } = readEmailPassword();
-        if (!email) {
-          showAuthError("Account creation failed: Enter your email address.");
-          return;
-        }
-        if (!password) {
-          showAuthError("Account creation failed: Enter a password.");
-          return;
-        }
-        if (password.length < 6) {
-          showAuthError("Account creation failed: Password must be at least 6 characters.");
-          return;
-        }
-        try {
-          await createUserWithEmailAndPassword(state.auth, email, password);
-          showAuthMessage("Account created and signed in.");
-        } catch (err) {
-          if (err?.code === "auth/email-already-in-use") {
-            try {
-              await signInWithEmailAndPassword(state.auth, email, password);
-              showAuthMessage("Account already existed, so we signed you in.");
-              return;
-            } catch (signInErr) {
-              showAuthError("Account already exists for this email, but the password did not match. Use Sign in or reset your password.");
-              return;
-            }
-          }
-          showAuthError(formatAuthError(err));
-        }
-      }));
-
-      $("btn-email-link").addEventListener("click", () => runAuthAction(async () => {
-        clearAuthNotices();
-        const { email } = readEmailPassword();
-        if (!email) {
-          showAuthError("Sign-in failed: Enter your email address before requesting a magic link.");
-          return;
-        }
-        try {
-          await sendSignInLinkToEmail(state.auth, email, linkSettings);
-          window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
-          showAuthMessage("Magic link sent. Check your inbox, then open the link on this same device/browser.");
-        } catch (err) {
-          showAuthError(formatAuthError(err));
-        }
-      }));
-
       $("btn-sign-out").addEventListener("click", () => signOut(state.auth));
-
-      if (isSignInWithEmailLink(state.auth, window.location.href)) {
-        clearAuthNotices();
-        let email = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY) || $("auth-email").value.trim();
-        if (!email) {
-          email = window.prompt("Confirm your email to complete sign-in:");
-        }
-        if (email) {
-          try {
-            await signInWithEmailLink(state.auth, email, window.location.href);
-            window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-            window.history.replaceState({}, document.title, window.location.pathname);
-            showAuthMessage("Email link verified. You are now signed in.");
-          } catch (err) {
-            showAuthError(formatAuthError(err));
-          }
-        } else {
-          showAuthError("Email link sign-in was canceled because no email was provided.");
-        }
-      }
 
       onAuthStateChanged(state.auth, async (user) => {
         state.unsub.forEach((u) => u());
@@ -672,6 +574,9 @@
 
         if (!user) {
           state.user = null;
+          state.currency = "USD";
+          $("currency-select").value = state.currency;
+          $("currency-select").disabled = true;
           $("auth-overlay").classList.remove("hidden");
           $("user-email-display").textContent = "—";
           rerenderAll();
@@ -679,8 +584,20 @@
         }
 
         state.user = user;
+        $("currency-select").disabled = false;
         $("auth-overlay").classList.add("hidden");
         $("user-email-display").textContent = user.email ?? user.displayName ?? "User";
+
+        state.unsub.push(onSnapshot(
+          doc(state.db, "users", user.uid, "settings", "preferences"),
+          (snap) => {
+            const savedCurrency = snap.exists() ? snap.data().currency : null;
+            state.currency = CURRENCY_OPTIONS.includes(savedCurrency) ? savedCurrency : "USD";
+            $("currency-select").value = state.currency;
+            rerenderAll();
+          },
+          (err) => showDataStatus(formatDbError(err), "error")
+        ));
 
         state.unsub.push(onSnapshot(
           query(collection(state.db, "users", user.uid, "transactions"), orderBy("date", "desc")),
@@ -717,6 +634,7 @@
 
     function hookForms() {
       $("tx-date").valueAsDate = new Date();
+      $("currency-select").disabled = true;
       $("tx-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!state.user) return;
@@ -768,6 +686,7 @@
       $("tx-search").addEventListener("input", renderTable);
       $("tx-month").addEventListener("change", renderTable);
       $("btn-insights").addEventListener("click", generateInsights);
+      $("currency-select").addEventListener("change", (e) => saveCurrencyPreference(e.target.value));
     }
 
     initCategoryOptions();
