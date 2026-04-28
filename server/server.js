@@ -15,6 +15,10 @@ const allowedOrigins = String(process.env.ALLOWED_ORIGINS || "")
   .filter(Boolean);
 
 app.disable("x-powered-by");
+if (allowedOrigins.length === 0) {
+  console.warn("[security] ALLOWED_ORIGINS is empty; browser-origin requests will be denied by CORS.");
+}
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -31,7 +35,10 @@ app.use(rateLimit({
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
+    if (allowedOrigins.length === 0) {
+      return cb(new Error("CORS blocked: ALLOWED_ORIGINS is not configured."));
+    }
+    if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error("CORS blocked for this origin."));
   },
   methods: ["GET", "POST"],
