@@ -242,8 +242,10 @@
       try {
         await task();
         hideDataStatus();
+        return true;
       } catch (err) {
         showDataStatus(formatDbError(err), "error");
+        return false;
       }
     }
 
@@ -638,7 +640,8 @@
           amount: Number($("tx-amount").value),
           createdAt: Date.now()
         };
-        await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "transactions"), payload));
+        const writeOk = await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "transactions"), payload));
+        if (!writeOk) return;
         $("tx-desc").value = "";
         $("tx-amount").value = "";
       });
@@ -646,12 +649,13 @@
       $("goal-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!state.user) return;
-        await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "goals"), {
+        const writeOk = await runDbWrite(() => addDoc(collection(state.db, "users", state.user.uid, "goals"), {
           name: $("goal-name").value.trim(),
           target: Number($("goal-target").value),
           current: 0,
           createdAt: Date.now()
         }));
+        if (!writeOk) return;
         $("goal-name").value = "";
         $("goal-target").value = "";
       });
@@ -661,7 +665,8 @@
         if (!state.user) return;
         const category = $("budget-category").value;
         const limit = Number($("budget-limit").value);
-        await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "budgets", category), { limit, updatedAt: Date.now() }));
+        const writeOk = await runDbWrite(() => setDoc(doc(state.db, "users", state.user.uid, "budgets", category), { limit, updatedAt: Date.now() }));
+        if (!writeOk) return;
         state.budgets[category] = limit;
         $("budget-limit").value = "";
         rerenderAll();
@@ -670,7 +675,8 @@
       $("btn-reset-budgets").addEventListener("click", async () => {
         if (!state.user) return;
         const tasks = Object.keys(state.budgets).map((cat) => deleteDoc(doc(state.db, "users", state.user.uid, "budgets", cat)));
-        await runDbWrite(() => Promise.all(tasks));
+        const writeOk = await runDbWrite(() => Promise.all(tasks));
+        if (!writeOk) return;
         state.budgets = {};
         rerenderAll();
       });
