@@ -193,7 +193,7 @@
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
     const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const EMAIL_LINK_STORAGE_KEY = "fineledger.emailLinkAddress";
+    const EMAIL_LINK_STORAGE_KEY = "fineledger.emailLinkAddress.session";
 
     function formatAuthError(err) {
       const code = err?.code ?? "";
@@ -440,11 +440,11 @@
 
       if (isSignInWithEmailLink(state.auth, window.location.href)) {
         try {
-          let email = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY);
+          let email = window.sessionStorage.getItem(EMAIL_LINK_STORAGE_KEY);
           if (!email) email = window.prompt("Confirm your email to finish sign-in:")?.trim();
           if (!email) throw new Error("Email is required to complete email-link sign-in.");
           await signInWithEmailLink(state.auth, email, window.location.href);
-          window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
+          window.sessionStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
           const clean = `${window.location.origin}${window.location.pathname}`;
           window.history.replaceState({}, document.title, clean);
         } catch (err) {
@@ -507,7 +507,7 @@
             handleCodeInApp: true
           };
           await sendSignInLinkToEmail(state.auth, email, actionCodeSettings);
-          window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
+          window.sessionStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
           showAuthError(`Sign-in link sent to ${email}. Open that link on this same device/browser to complete sign-in.`);
         } catch (err) {
           showAuthError(`Email-link send failed: ${err?.message ?? "Unknown error."}`);

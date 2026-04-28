@@ -47,6 +47,7 @@ You can keep this in a separate file if you prefer.
 - Enable **Authentication > Email link (passwordless sign-in)** if you want magic-link login.
 - Create Firestore database.
 - Add authorized domain(s) for your deployed site.
+- For email-link sign-in, open the link in the same browser session where you requested it (the app keeps the pending email only in `sessionStorage`).
 
 If you see `auth/unauthorized-domain`:
 - Go to **Firebase Console → Authentication → Settings → Authorized domains**.
