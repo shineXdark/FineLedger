@@ -33,6 +33,16 @@
       <button id="btn-google-auth" class="mt-6 w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
         <span>🔐</span><span>Continue with Google</span>
       </button>
+      <button id="btn-anon-auth" class="mt-3 w-full bg-slate-900 text-white hover:bg-slate-700 rounded-xl py-3 font-semibold">
+        Continue without Google
+      </button>
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input id="email-auth-input" type="email" placeholder="you@example.com" class="px-3 py-2 border border-slate-300 rounded-lg sm:col-span-2" />
+        <input id="password-auth-input" type="password" placeholder="Password (for password sign-in)" class="px-3 py-2 border border-slate-300 rounded-lg sm:col-span-2" />
+        <button id="btn-email-signin" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Email + Password Sign In</button>
+        <button id="btn-email-register" class="px-3 py-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-sm font-semibold">Create Account</button>
+        <button id="btn-email-link" class="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-sm font-semibold sm:col-span-2">Send Passwordless Email Link</button>
+      </div>
       <p class="mt-4 text-xs text-slate-500">Host this page using Firebase Hosting, Netlify, or GitHub Pages.</p>
     </div>
   </div>
@@ -153,7 +163,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { getAuth, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
@@ -182,6 +192,23 @@
 
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
+    const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const EMAIL_LINK_STORAGE_KEY = "fineledger.emailLinkAddress";
+
+    function formatAuthError(err) {
+      const code = err?.code ?? "";
+      const message = err?.message ?? "Unknown auth error.";
+      if (code === "auth/unauthorized-domain") {
+        const host = normalizeDomain(window.location.origin);
+        return `Sign-in failed: Google login is blocked on "${host}". Add this host in Firebase Console → Authentication → Settings → Authorized domains, or use "Continue without Google".`;
+      }
+      return `Sign-in failed: ${message}`;
+    }
+
+    function showAuthError(msg) {
+      $("auth-error").textContent = msg;
+      $("auth-error").classList.remove("hidden");
+    }
 
     function initCategoryOptions() {
       for (const id of ["tx-category", "budget-category"]) {
@@ -411,13 +438,79 @@
       state.db = getFirestore(app);
       const provider = new GoogleAuthProvider();
 
+      if (isSignInWithEmailLink(state.auth, window.location.href)) {
+        try {
+          let email = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY);
+          if (!email) email = window.prompt("Confirm your email to finish sign-in:")?.trim();
+          if (!email) throw new Error("Email is required to complete email-link sign-in.");
+          await signInWithEmailLink(state.auth, email, window.location.href);
+          window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
+          const clean = `${window.location.origin}${window.location.pathname}`;
+          window.history.replaceState({}, document.title, clean);
+        } catch (err) {
+          showAuthError(`Email-link sign-in failed: ${err?.message ?? "Unknown error."}`);
+        }
+      }
+
       $("btn-google-auth").addEventListener("click", async () => {
         $("auth-error").classList.add("hidden");
         try {
           await signInWithPopup(state.auth, provider);
         } catch (err) {
-          $("auth-error").textContent = `Sign-in failed: ${err.message}`;
-          $("auth-error").classList.remove("hidden");
+          showAuthError(formatAuthError(err));
+        }
+      });
+
+      $("btn-anon-auth").addEventListener("click", async () => {
+        $("auth-error").classList.add("hidden");
+        try {
+          await signInAnonymously(state.auth);
+        } catch (err) {
+          showAuthError(`Anonymous sign-in failed: ${err?.message ?? "Unknown error."}`);
+        }
+      });
+
+      $("btn-email-signin").addEventListener("click", async () => {
+        $("auth-error").classList.add("hidden");
+        const email = $("email-auth-input").value.trim();
+        const password = $("password-auth-input").value;
+        if (!email || !password) return showAuthError("Enter both email and password.");
+        try {
+          await signInWithEmailAndPassword(state.auth, email, password);
+        } catch (err) {
+          showAuthError(`Email/password sign-in failed: ${err?.message ?? "Unknown error."}`);
+        }
+      });
+
+      $("btn-email-register").addEventListener("click", async () => {
+        $("auth-error").classList.add("hidden");
+        const email = $("email-auth-input").value.trim();
+        const password = $("password-auth-input").value;
+        if (!email || !password) return showAuthError("Enter both email and password to create an account.");
+        try {
+          await createUserWithEmailAndPassword(state.auth, email, password);
+        } catch (err) {
+          showAuthError(`Account creation failed: ${err?.message ?? "Unknown error."}`);
+        }
+      });
+
+      $("btn-email-link").addEventListener("click", async () => {
+        $("auth-error").classList.add("hidden");
+        const email = $("email-auth-input").value.trim();
+        if (!email) return showAuthError("Enter your email to receive a sign-in link.");
+        if (!window.location.origin || window.location.origin === "null") {
+          return showAuthError("Email-link sign-in requires an http(s) URL. For local file runs, use Google/anonymous/email+password instead.");
+        }
+        try {
+          const actionCodeSettings = {
+            url: `${window.location.origin}${window.location.pathname}`,
+            handleCodeInApp: true
+          };
+          await sendSignInLinkToEmail(state.auth, email, actionCodeSettings);
+          window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
+          showAuthError(`Sign-in link sent to ${email}. Open that link on this same device/browser to complete sign-in.`);
+        } catch (err) {
+          showAuthError(`Email-link send failed: ${err?.message ?? "Unknown error."}`);
         }
       });
 
@@ -461,6 +554,7 @@
 
     function hookForms() {
       $("tx-date").valueAsDate = new Date();
+
       $("tx-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!state.user) return;

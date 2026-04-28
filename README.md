@@ -43,8 +43,15 @@ You can keep this in a separate file if you prefer.
 
 ### 2) Firebase console checks
 - Enable **Authentication > Google provider**.
+- Enable **Authentication > Email/Password** (for password sign-in + account creation).
+- Enable **Authentication > Email link (passwordless sign-in)** if you want magic-link login.
 - Create Firestore database.
 - Add authorized domain(s) for your deployed site.
+
+If you see `auth/unauthorized-domain`:
+- Go to **Firebase Console → Authentication → Settings → Authorized domains**.
+- Add the exact host you are opening the app from (for example `localhost`, `127.0.0.1`, or `your-site.web.app`).
+- Confirm your runtime config points to the same Firebase project where you added the domain.
 
 ### 3) Firestore rules (starter)
 Use this as a secure baseline and adjust to your needs:
@@ -81,3 +88,4 @@ Use:
 ## Notes
 - Currency is currently USD in UI formatting; adjust in `money()` function.
 - Gemini insights are optional and disabled automatically when no API key is provided.
+- `file://` cannot be added as a Firebase Google OAuth authorized domain. Use **Continue without Google** (anonymous Firebase auth) for local runs, or host the app on an authorized HTTPS domain for Google sign-in.
