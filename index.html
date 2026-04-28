@@ -193,6 +193,18 @@
             <label class="text-sm text-slate-600">API Key</label>
             <input id="api-key" type="password" placeholder="Paste your API key" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
           </div>
+          <div>
+            <label class="flex items-center gap-2 mt-2">
+              <input id="api-include-database" type="checkbox" class="h-4 w-4" />
+              <span class="text-sm text-slate-700">Include database APIs</span>
+            </label>
+          </div>
+          <div>
+            <label class="flex items-center gap-2 mt-2">
+              <input id="api-include-all" type="checkbox" class="h-4 w-4" />
+              <span class="text-sm text-slate-700">Include all other APIs</span>
+            </label>
+          </div>
           <div class="md:col-span-2 flex gap-2">
             <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">Save API Settings</button>
             <button id="btn-clear-api-settings" type="button" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">Clear API Settings</button>
@@ -218,7 +230,9 @@
         provider: "openai",
         model: "",
         baseUrl: "",
-        apiKey: ""
+        apiKey: "",
+        includeDatabaseApis: false,
+        includeAllApis: false
       }
     };
 
@@ -239,7 +253,9 @@
               provider: saved.apiConfig.provider || "openai",
               model: saved.apiConfig.model || "",
               baseUrl: saved.apiConfig.baseUrl || "",
-              apiKey: saved.apiConfig.apiKey || ""
+              apiKey: saved.apiConfig.apiKey || "",
+              includeDatabaseApis: Boolean(saved.apiConfig.includeDatabaseApis),
+              includeAllApis: Boolean(saved.apiConfig.includeAllApis)
             }
           : state.apiConfig;
       } catch {
@@ -262,10 +278,16 @@
       $("api-model").value = state.apiConfig.model || "";
       $("api-base-url").value = state.apiConfig.baseUrl || "";
       $("api-key").value = state.apiConfig.apiKey || "";
+      $("api-include-database").checked = Boolean(state.apiConfig.includeDatabaseApis);
+      $("api-include-all").checked = Boolean(state.apiConfig.includeAllApis);
       const hasKey = Boolean((state.apiConfig.apiKey || "").trim());
+      const inclusionSummary = [
+        state.apiConfig.includeDatabaseApis ? "database APIs included" : "database APIs not included",
+        state.apiConfig.includeAllApis ? "all other APIs included" : "all other APIs not included"
+      ].join(", ");
       $("api-settings-status").textContent = hasKey
-        ? `Saved ${state.apiConfig.provider} API settings in local browser storage.`
-        : "No API settings saved.";
+        ? `Saved ${state.apiConfig.provider} API settings in local browser storage (${inclusionSummary}).`
+        : `No API key saved. Current local API inclusion choices: ${inclusionSummary}.`;
     }
 
     function initCategoryOptions() {
@@ -542,14 +564,23 @@
           provider: $("api-provider").value,
           model: $("api-model").value.trim(),
           baseUrl: $("api-base-url").value.trim(),
-          apiKey: $("api-key").value.trim()
+          apiKey: $("api-key").value.trim(),
+          includeDatabaseApis: $("api-include-database").checked,
+          includeAllApis: $("api-include-all").checked
         };
         persistState();
-        $("api-settings-status").textContent = `Saved ${state.apiConfig.provider} API settings in local browser storage.`;
+        $("api-settings-status").textContent = `Saved ${state.apiConfig.provider} API settings and API inclusion choices in local browser storage only.`;
       });
 
       $("btn-clear-api-settings").addEventListener("click", () => {
-        state.apiConfig = { provider: "openai", model: "", baseUrl: "", apiKey: "" };
+        state.apiConfig = {
+          provider: "openai",
+          model: "",
+          baseUrl: "",
+          apiKey: "",
+          includeDatabaseApis: false,
+          includeAllApis: false
+        };
         persistState();
         renderApiSettings();
       });
