@@ -84,3 +84,15 @@ service cloud.firestore {
 - Gemini API key **must remain server-side only**.
 - In production, set `ALLOWED_ORIGINS` to your exact deployed frontend origin(s).
 - Use HTTPS for frontend and backend.
+
+## GitHub Pages publishing fix
+
+If your Pages URL shows a 404 page, add GitHub Actions as the publishing source.
+This repo now includes `.github/workflows/deploy-pages.yml` which deploys `index.html` from the repo root whenever `main` is updated.
+
+After pushing to GitHub:
+1. Open **Settings → Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. Re-run the **Deploy static site to GitHub Pages** workflow if needed.
+
+Then wait 1-2 minutes and refresh your Pages URL.
