@@ -46,6 +46,11 @@ You can keep this in a separate file if you prefer.
 - Create Firestore database.
 - Add authorized domain(s) for your deployed site.
 
+If you see `auth/unauthorized-domain`:
+- Go to **Firebase Console → Authentication → Settings → Authorized domains**.
+- Add the exact host you are opening the app from (for example `localhost`, `127.0.0.1`, or `your-site.web.app`).
+- Confirm your runtime config points to the same Firebase project where you added the domain.
+
 ### 3) Firestore rules (starter)
 Use this as a secure baseline and adjust to your needs:
 
