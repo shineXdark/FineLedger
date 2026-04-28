@@ -44,6 +44,15 @@ Before the module script in `index.html`, inject config like:
 
 You can keep this in a separate file if you prefer.
 
+### Security hardening (important)
+- Do **not** commit real runtime config or API keys into `index.html`.
+- Serve `window.FINELEDGER_CONFIG` from a deployment-time file that is excluded from git (for example `config.local.js` in local dev, or host-injected script in production).
+- Firebase web `apiKey` values are not authentication secrets, but they should still be treated as project identifiers:
+  - Restrict usage with strict Firebase Auth + Firestore rules.
+  - Keep authorized domains tight.
+  - Enable Firebase App Check for abuse reduction.
+- Gemini API keys are sensitive for billing/abuse. Prefer a server-side proxy endpoint instead of exposing `geminiApiKey` directly to browsers.
+
 ### 2) Firebase console checks
 - Enable **Authentication > Google provider** (optional now).
 - Enable **Authentication > Email/Password provider**.
