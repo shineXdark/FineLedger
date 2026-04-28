@@ -173,17 +173,7 @@
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
-    const cfg = window.FINELEDGER_CONFIG ?? {
-      firebase: {
-        apiKey: "AIzaSyAD9LLwzUHC8istCXkyhWh98h0SMASljwc",
-        authDomain: "myfinancetracker-63c24.firebaseapp.com",
-        projectId: "Ymyfinancetracker-63c24",
-        storageBucket: "myfinancetracker-63c24.firebasestorage.app",
-        messagingSenderId: "38979968958",
-        appId: "1:38979968958:web:fbf8bca4f9a7cfc514a3ef"
-      },
-      geminiApiKey: "AIzaSyDvUJbeCA6ge-Rayqjl8726swAOKLPibBA"
-    };
+    const cfg = window.FINELEDGER_CONFIG;
 
     const state = {
       user: null,
@@ -205,6 +195,9 @@
     let authBusy = false;
 
     function validateFirebaseSetup() {
+      if (!cfg || typeof cfg !== "object") {
+        throw new Error("Runtime config is missing. Define window.FINELEDGER_CONFIG before loading FineLedger.");
+      }
       if (!cfg?.firebase?.apiKey || !cfg?.firebase?.projectId || String(cfg.firebase.apiKey).startsWith("YOUR_") || String(cfg.firebase.projectId).startsWith("YOUR_")) {
         throw new Error("Firebase config is missing. Add real credentials to window.FINELEDGER_CONFIG before using the app.");
       }
