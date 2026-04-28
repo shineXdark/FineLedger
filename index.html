@@ -6,6 +6,8 @@
   <title>FineLedger Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <style>
     :root { color-scheme: light; }
     body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
@@ -24,27 +26,11 @@
     <div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-slate-50 to-cyan-100"></div>
   </div>
 
-  <div id="auth-overlay" class="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4">
-    <div class="card max-w-lg w-full p-8 text-center">
-      <p class="text-xs uppercase tracking-[0.2em] text-indigo-600 font-semibold">FineLedger Pro</p>
-      <h1 class="text-3xl font-bold mt-2">Secure Finance Workspace</h1>
-      <p class="mt-2 text-slate-600">Run fully local in your browser with no external API calls.</p>
-      <div id="auth-error" class="hidden mt-4 text-sm rounded-lg p-3 border border-rose-300 bg-rose-50 text-rose-700"></div>
-      <div class="mt-6 space-y-3 text-left">
-        <button id="btn-google-auth" class="w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
-          <span>🔐</span><span>Continue Local Mode</span>
-        </button>
-        <p id="auth-message" class="hidden text-xs rounded-lg p-3 border border-emerald-300 bg-emerald-50 text-emerald-700"></p>
-      </div>
-      <p class="mt-4 text-xs text-slate-500">Host anywhere as a static file. Data remains local to this browser.</p>
-    </div>
-  </div>
-
   <main class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
     <header class="card p-4 md:p-5 flex flex-wrap items-center justify-between gap-3 glass">
       <div>
         <h1 class="text-2xl font-bold">FineLedger Pro Dashboard</h1>
-        <p class="text-sm text-slate-600">Interactive budgeting + goal tracking + monthly planning.</p>
+        <p class="text-sm text-slate-600">Cloud-only finance tracking with your own Firebase project settings.</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
@@ -59,21 +45,22 @@
             <option value="INR">INR (₹)</option>
           </select>
         </div>
-        <div class="text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-          <span class="text-slate-500">Signed in:</span>
-          <span id="user-email-display" class="font-semibold">—</span>
+        <div id="cloud-indicator" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700">
+          ☁️ Not connected to cloud
         </div>
-        <button id="btn-sign-out" class="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 text-sm font-semibold">Sign Out</button>
       </div>
     </header>
-    <div id="data-status" class="hidden card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800"></div>
+
+    <div id="data-status" class="card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800">
+      Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.
+    </div>
 
     <section class="card p-3 md:p-4 flex flex-wrap gap-2" id="tabs">
       <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
       <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
       <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
       <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Savings Goals</button>
-      <button data-view="settings" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">API Settings</button>
+      <button data-view="settings" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Cloud Settings</button>
     </section>
 
     <section id="view-overview" class="view space-y-6">
@@ -96,12 +83,9 @@
         </div>
       </div>
 
-      <div class="card p-5">
-        <div class="flex justify-between items-center">
-          <h2 class="font-bold">AI Insight Assistant</h2>
-          <button id="btn-insights" class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold">Generate</button>
-        </div>
-        <div id="insight-output" class="mt-3 text-sm text-slate-700 leading-6">Generate insights after adding at least 8-10 transactions for higher quality recommendations.</div>
+      <div class="card p-5 text-sm text-slate-600">
+        <p class="font-semibold text-slate-800">Cloud-only mode is active in this build.</p>
+        <p class="mt-1">No transaction, budget, or goal data is written to browser localStorage. Financial records are synced to your configured Firebase Firestore database only.</p>
       </div>
     </section>
 
@@ -169,48 +153,44 @@
 
     <section id="view-settings" class="view hidden space-y-4">
       <div class="card p-5">
-        <h2 class="font-bold mb-1">API Credentials</h2>
-        <p class="text-sm text-slate-600">Save your API details in browser storage instead of editing files manually.</p>
-        <form id="api-settings-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+        <h2 class="font-bold mb-1">Firebase Cloud Connection</h2>
+        <p class="text-sm text-slate-600">Paste your Firebase client configuration below. This form stores only Firebase config locally so secrets stay out of your public repository.</p>
+        <form id="firebase-settings-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div>
-            <label class="text-sm text-slate-600">Provider</label>
-            <select id="api-provider" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg">
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-sm text-slate-600">Model</label>
-            <input id="api-model" type="text" placeholder="gpt-4.1-mini" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="text-sm text-slate-600">Base URL (optional)</label>
-            <input id="api-base-url" type="url" placeholder="https://api.openai.com/v1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
-          </div>
-          <div class="md:col-span-2">
             <label class="text-sm text-slate-600">API Key</label>
-            <input id="api-key" type="password" placeholder="Paste your API key" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
+            <input id="fb-api-key" type="password" placeholder="AIza..." class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
           <div>
-            <label class="flex items-center gap-2 mt-2">
-              <input id="api-include-database" type="checkbox" class="h-4 w-4" />
-              <span class="text-sm text-slate-700">Include database APIs</span>
-            </label>
+            <label class="text-sm text-slate-600">Auth Domain</label>
+            <input id="fb-auth-domain" type="text" placeholder="your-app.firebaseapp.com" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
           <div>
-            <label class="flex items-center gap-2 mt-2">
-              <input id="api-include-all" type="checkbox" class="h-4 w-4" />
-              <span class="text-sm text-slate-700">Include all other APIs</span>
-            </label>
+            <label class="text-sm text-slate-600">Project ID</label>
+            <input id="fb-project-id" type="text" placeholder="your-project-id" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
-          <div class="md:col-span-2 flex gap-2">
-            <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">Save API Settings</button>
-            <button id="btn-clear-api-settings" type="button" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">Clear API Settings</button>
+          <div>
+            <label class="text-sm text-slate-600">Storage Bucket</label>
+            <input id="fb-storage-bucket" type="text" placeholder="your-app.appspot.com" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">Messaging Sender ID</label>
+            <input id="fb-messaging-sender-id" type="text" placeholder="1234567890" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">App ID</label>
+            <input id="fb-app-id" type="text" placeholder="1:123:web:abc" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-sm text-slate-600">Workspace ID (cloud document namespace)</label>
+            <input id="fb-workspace-id" type="text" placeholder="my-finance-workspace" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
+          </div>
+          <div class="md:col-span-2 flex flex-wrap gap-2">
+            <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">Save & Connect Cloud</button>
+            <button id="btn-disconnect-cloud" type="button" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">Disconnect</button>
+            <button id="btn-clear-cloud-settings" type="button" class="px-4 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold">Clear Saved Config</button>
           </div>
         </form>
-        <p id="api-settings-status" class="mt-3 text-sm text-slate-600">No API settings saved.</p>
+        <p id="firebase-settings-status" class="mt-3 text-sm text-slate-600">No Firebase config saved yet.</p>
       </div>
     </section>
   </main>
@@ -218,76 +198,177 @@
   <script>
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
     const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
-    const STORAGE_KEY = "fineledger_local_data_v1";
+    const FIREBASE_CONFIG_KEY = "fineledger_firebase_config_v1";
 
     const state = {
       tx: [],
       goals: [],
       budgets: {},
       charts: {},
-      currency: "USD",
-      apiConfig: {
-        provider: "openai",
-        model: "",
-        baseUrl: "",
-        apiKey: "",
-        includeDatabaseApis: false,
-        includeAllApis: false
-      }
+      currency: "USD"
+    };
+
+    const cloud = {
+      app: null,
+      db: null,
+      docRef: null,
+      unsubscribe: null,
+      connected: false,
+      syncing: false,
+      workspaceId: ""
     };
 
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: state.currency || "USD" }).format(Number(n || 0));
 
-    function loadState() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      try {
-        const saved = JSON.parse(raw);
-        state.tx = Array.isArray(saved.tx) ? saved.tx : [];
-        state.goals = Array.isArray(saved.goals) ? saved.goals : [];
-        state.budgets = saved.budgets && typeof saved.budgets === "object" ? saved.budgets : {};
-        state.currency = CURRENCY_OPTIONS.includes(saved.currency) ? saved.currency : "USD";
-        state.apiConfig = saved.apiConfig && typeof saved.apiConfig === "object"
-          ? {
-              provider: saved.apiConfig.provider || "openai",
-              model: saved.apiConfig.model || "",
-              baseUrl: saved.apiConfig.baseUrl || "",
-              apiKey: saved.apiConfig.apiKey || "",
-              includeDatabaseApis: Boolean(saved.apiConfig.includeDatabaseApis),
-              includeAllApis: Boolean(saved.apiConfig.includeAllApis)
-            }
-          : state.apiConfig;
-      } catch {
-        // ignore corrupt local data
-      }
+    function sanitizeWorkspaceId(raw) {
+      return String(raw || "").trim().replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
     }
 
-    function persistState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    function getCloudPayload() {
+      return {
         tx: state.tx,
         goals: state.goals,
         budgets: state.budgets,
         currency: state.currency,
-        apiConfig: state.apiConfig
-      }));
+        updatedAt: Date.now()
+      };
     }
 
-    function renderApiSettings() {
-      $("api-provider").value = state.apiConfig.provider || "openai";
-      $("api-model").value = state.apiConfig.model || "";
-      $("api-base-url").value = state.apiConfig.baseUrl || "";
-      $("api-key").value = state.apiConfig.apiKey || "";
-      $("api-include-database").checked = Boolean(state.apiConfig.includeDatabaseApis);
-      $("api-include-all").checked = Boolean(state.apiConfig.includeAllApis);
-      const hasKey = Boolean((state.apiConfig.apiKey || "").trim());
-      const inclusionSummary = [
-        state.apiConfig.includeDatabaseApis ? "database APIs included" : "database APIs not included",
-        state.apiConfig.includeAllApis ? "all other APIs included" : "all other APIs not included"
-      ].join(", ");
-      $("api-settings-status").textContent = hasKey
-        ? `Saved ${state.apiConfig.provider} API settings in local browser storage (${inclusionSummary}).`
-        : `No API key saved. Current local API inclusion choices: ${inclusionSummary}.`;
+    function applyCloudPayload(data) {
+      state.tx = Array.isArray(data.tx) ? data.tx : [];
+      state.goals = Array.isArray(data.goals) ? data.goals : [];
+      state.budgets = data.budgets && typeof data.budgets === "object" ? data.budgets : {};
+      state.currency = CURRENCY_OPTIONS.includes(data.currency) ? data.currency : "USD";
+      $("currency-select").value = state.currency;
+      rerenderAll();
+    }
+
+    function renderCloudIndicator() {
+      const indicator = $("cloud-indicator");
+      const status = $("data-status");
+      if (cloud.connected) {
+        indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700";
+        status.className = "card p-3 text-sm border-emerald-300 bg-emerald-50 text-emerald-800";
+        status.innerHTML = "Cloud mode connected. Financial data is synced to Firestore only (no local ledger persistence).";
+      } else {
+        indicator.textContent = "☁️ Not connected to cloud";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700";
+        status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
+        status.innerHTML = "Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.";
+      }
+    }
+
+    async function persistCloudData() {
+      if (!cloud.connected || !cloud.docRef || cloud.syncing) return;
+      try {
+        await cloud.docRef.set(getCloudPayload(), { merge: true });
+      } catch (err) {
+        $("firebase-settings-status").textContent = `Cloud save failed: ${err.message}`;
+      }
+    }
+
+    function requireCloudOrWarn() {
+      if (cloud.connected) return true;
+      $("firebase-settings-status").textContent = "Cloud is not connected. Please configure Firebase in Cloud Settings first.";
+      return false;
+    }
+
+    function readStoredFirebaseConfig() {
+      const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+
+    function storeFirebaseConfig(config) {
+      localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
+    }
+
+    function clearStoredFirebaseConfig() {
+      localStorage.removeItem(FIREBASE_CONFIG_KEY);
+    }
+
+    function readFirebaseForm() {
+      return {
+        apiKey: $("fb-api-key").value.trim(),
+        authDomain: $("fb-auth-domain").value.trim(),
+        projectId: $("fb-project-id").value.trim(),
+        storageBucket: $("fb-storage-bucket").value.trim(),
+        messagingSenderId: $("fb-messaging-sender-id").value.trim(),
+        appId: $("fb-app-id").value.trim(),
+        workspaceId: sanitizeWorkspaceId($("fb-workspace-id").value)
+      };
+    }
+
+    function renderFirebaseForm(config) {
+      $("fb-api-key").value = config?.apiKey || "";
+      $("fb-auth-domain").value = config?.authDomain || "";
+      $("fb-project-id").value = config?.projectId || "";
+      $("fb-storage-bucket").value = config?.storageBucket || "";
+      $("fb-messaging-sender-id").value = config?.messagingSenderId || "";
+      $("fb-app-id").value = config?.appId || "";
+      $("fb-workspace-id").value = config?.workspaceId || "";
+      $("firebase-settings-status").textContent = config
+        ? "Firebase config loaded from local browser storage."
+        : "No Firebase config saved yet.";
+    }
+
+    async function disconnectCloud() {
+      if (cloud.unsubscribe) {
+        cloud.unsubscribe();
+        cloud.unsubscribe = null;
+      }
+      if (cloud.app) {
+        await cloud.app.delete().catch(() => {});
+      }
+      cloud.app = null;
+      cloud.db = null;
+      cloud.docRef = null;
+      cloud.connected = false;
+      cloud.workspaceId = "";
+      renderCloudIndicator();
+    }
+
+    async function connectCloud(config) {
+      if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId || !config.workspaceId) {
+        throw new Error("Missing required Firebase fields.");
+      }
+
+      await disconnectCloud();
+
+      cloud.app = firebase.initializeApp({
+        apiKey: config.apiKey,
+        authDomain: config.authDomain,
+        projectId: config.projectId,
+        storageBucket: config.storageBucket || undefined,
+        messagingSenderId: config.messagingSenderId || undefined,
+        appId: config.appId
+      }, `fineledger-${config.workspaceId}-${Date.now()}`);
+
+      cloud.db = cloud.app.firestore();
+      cloud.workspaceId = config.workspaceId;
+      cloud.docRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("data").doc("ledger");
+
+      cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
+        cloud.syncing = true;
+        if (snap.exists) {
+          applyCloudPayload(snap.data() || {});
+        } else {
+          cloud.docRef.set(getCloudPayload(), { merge: true });
+        }
+        cloud.syncing = false;
+      }, (err) => {
+        $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
+      });
+
+      cloud.connected = true;
+      renderCloudIndicator();
+      $("firebase-settings-status").textContent = `Connected to Firestore workspace: ${config.workspaceId}`;
     }
 
     function initCategoryOptions() {
@@ -358,9 +439,10 @@
       `).join("") : `<tr><td colspan="6" class="p-6 text-center text-slate-500">No transactions found.</td></tr>`;
 
       document.querySelectorAll("[data-del]").forEach((b) => {
-        b.addEventListener("click", () => {
+        b.addEventListener("click", async () => {
+          if (!requireCloudOrWarn()) return;
           state.tx = state.tx.filter((t) => t.id !== b.dataset.del);
-          persistState();
+          await persistCloudData();
           rerenderAll();
         });
       });
@@ -416,21 +498,24 @@
         `;
       }).join("");
 
-      document.querySelectorAll("[data-goal-del]").forEach((btn) => btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-goal-del]").forEach((btn) => btn.addEventListener("click", async () => {
+        if (!requireCloudOrWarn()) return;
         state.goals = state.goals.filter((g) => g.id !== btn.dataset.goalDel);
-        persistState();
+        await persistCloudData();
         rerenderAll();
       }));
 
-      document.querySelectorAll("[data-goal-add]").forEach((btn) => btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-goal-add]").forEach((btn) => btn.addEventListener("click", async () => {
+        if (!requireCloudOrWarn()) return;
         const id = btn.dataset.goalAdd;
         const input = document.querySelector(`[data-goal-amt='${id}']`);
         const delta = Number(input.value);
         if (!delta || delta <= 0) return;
         const goal = state.goals.find((g) => g.id === id);
+        if (!goal) return;
         goal.current = Number(goal.current) + delta;
         input.value = "";
-        persistState();
+        await persistCloudData();
         rerenderAll();
       }));
     }
@@ -480,15 +565,6 @@
       });
     }
 
-    function generateInsights() {
-      const out = $("insight-output");
-      if (state.apiConfig.apiKey) {
-        out.textContent = `API key detected for ${state.apiConfig.provider}. Connect your preferred provider request logic to use these saved settings.`;
-        return;
-      }
-      out.textContent = "No API key saved yet. Open API Settings to add one without editing project files.";
-    }
-
     function rerenderAll() {
       computeOverview();
       renderMonthFilter();
@@ -496,13 +572,14 @@
       renderBudgets();
       renderGoals();
       renderCharts();
-      renderApiSettings();
+      renderCloudIndicator();
     }
 
     function hookForms() {
       $("tx-date").valueAsDate = new Date();
-      $("tx-form").addEventListener("submit", (e) => {
+      $("tx-form").addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (!requireCloudOrWarn()) return;
         state.tx.push({
           id: crypto.randomUUID(),
           date: $("tx-date").value,
@@ -514,12 +591,13 @@
         });
         $("tx-desc").value = "";
         $("tx-amount").value = "";
-        persistState();
+        await persistCloudData();
         rerenderAll();
       });
 
-      $("goal-form").addEventListener("submit", (e) => {
+      $("goal-form").addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (!requireCloudOrWarn()) return;
         state.goals.push({
           id: crypto.randomUUID(),
           name: $("goal-name").value.trim(),
@@ -529,85 +607,84 @@
         });
         $("goal-name").value = "";
         $("goal-target").value = "";
-        persistState();
+        await persistCloudData();
         rerenderAll();
       });
 
-      $("budget-form").addEventListener("submit", (e) => {
+      $("budget-form").addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (!requireCloudOrWarn()) return;
         const category = $("budget-category").value;
         const limit = Number($("budget-limit").value);
         state.budgets[category] = limit;
         $("budget-limit").value = "";
-        persistState();
+        await persistCloudData();
         rerenderAll();
       });
 
-      $("btn-reset-budgets").addEventListener("click", () => {
+      $("btn-reset-budgets").addEventListener("click", async () => {
+        if (!requireCloudOrWarn()) return;
         state.budgets = {};
-        persistState();
+        await persistCloudData();
         rerenderAll();
       });
 
       $("tx-search").addEventListener("input", renderTable);
       $("tx-month").addEventListener("change", renderTable);
-      $("btn-insights").addEventListener("click", generateInsights);
-      $("currency-select").addEventListener("change", (e) => {
+      $("currency-select").addEventListener("change", async (e) => {
+        if (!requireCloudOrWarn()) {
+          e.target.value = state.currency;
+          return;
+        }
         state.currency = e.target.value;
-        persistState();
+        await persistCloudData();
         rerenderAll();
       });
 
-      $("api-settings-form").addEventListener("submit", (e) => {
+      $("firebase-settings-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        state.apiConfig = {
-          provider: $("api-provider").value,
-          model: $("api-model").value.trim(),
-          baseUrl: $("api-base-url").value.trim(),
-          apiKey: $("api-key").value.trim(),
-          includeDatabaseApis: $("api-include-database").checked,
-          includeAllApis: $("api-include-all").checked
-        };
-        persistState();
-        $("api-settings-status").textContent = `Saved ${state.apiConfig.provider} API settings and API inclusion choices in local browser storage only.`;
+        const config = readFirebaseForm();
+        if (!config.workspaceId) {
+          $("firebase-settings-status").textContent = "Workspace ID is required.";
+          return;
+        }
+        storeFirebaseConfig(config);
+        try {
+          await connectCloud(config);
+        } catch (err) {
+          $("firebase-settings-status").textContent = `Connect failed: ${err.message}`;
+          await disconnectCloud();
+        }
       });
 
-      $("btn-clear-api-settings").addEventListener("click", () => {
-        state.apiConfig = {
-          provider: "openai",
-          model: "",
-          baseUrl: "",
-          apiKey: "",
-          includeDatabaseApis: false,
-          includeAllApis: false
-        };
-        persistState();
-        renderApiSettings();
+      $("btn-disconnect-cloud").addEventListener("click", async () => {
+        await disconnectCloud();
+        $("firebase-settings-status").textContent = "Cloud disconnected. Reconnect to continue working.";
+      });
+
+      $("btn-clear-cloud-settings").addEventListener("click", () => {
+        clearStoredFirebaseConfig();
+        renderFirebaseForm(null);
       });
     }
 
-    function initLocalModeUi() {
-      $("auth-overlay").classList.remove("hidden");
-      $("btn-google-auth").textContent = "Continue in Local Mode";
-      $("btn-google-auth").addEventListener("click", () => {
-        $("auth-overlay").classList.add("hidden");
-      });
-      $("btn-sign-out").textContent = "Lock";
-      $("btn-sign-out").addEventListener("click", () => {
-        $("auth-overlay").classList.remove("hidden");
-      });
-      $("user-email-display").textContent = "Local only";
-      $("auth-message").textContent = "No external APIs are used. Data is stored only in this browser.";
-      $("auth-message").classList.remove("hidden");
+    async function bootstrapCloud() {
+      const saved = readStoredFirebaseConfig();
+      renderFirebaseForm(saved);
+      if (!saved) return;
+      try {
+        await connectCloud(saved);
+      } catch (err) {
+        $("firebase-settings-status").textContent = `Auto-connect failed: ${err.message}`;
+      }
     }
 
-    loadState();
     initCategoryOptions();
     setTabs();
     hookForms();
-    initLocalModeUi();
-    $("currency-select").value = state.currency;
+    renderCloudIndicator();
     rerenderAll();
+    bootstrapCloud();
   </script>
 </body>
 </html>
