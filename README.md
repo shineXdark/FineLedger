@@ -1,76 +1,71 @@
 # FineLedger Pro
 
-FineLedger Pro is a single-page budget system with:
-- Google sign-in (Firebase Auth)
-- Email/password sign-in + account creation (Firebase Auth)
-- Passwordless email link sign-in (Firebase Auth magic link)
-- Real-time transaction ledger (Firestore, not Firebase Realtime Database)
-- Savings goals tracker
-- Monthly category budgets with health indicators
-- KPI dashboard + charts
-- Optional Gemini insight generation
+FineLedger Pro is a budgeting dashboard with:
+- Firebase Auth (Google)
+- Firestore-backed ledger, goals, and budgets
+- Dashboard KPIs + charts
+- Optional AI insights through a **secure backend proxy**
 
-## Why this solves your previous workflow issue
-You **do not** need VS Code Live Server.
-Host this app on any static hosting provider and open its HTTPS URL:
-- Firebase Hosting (recommended)
-- Netlify
-- Vercel
-- GitHub Pages
+## Security-first architecture
 
-Once hosted, Google OAuth + Firestore work from the live URL.
-Opening `index.html` directly via `file://` is not a supported production flow for persistent cloud auth/sync.
+This repo now separates public client config from server secrets:
 
-## Setup
+- `index.html` (browser client) uses `window.FINELEDGER_CONFIG` for Firebase public config and backend URL.
+- `server/server.js` is a backend API layer that stores sensitive keys in environment variables.
+- `.env` (local only, never commit) holds secrets like `GEMINI_API_KEY`.
 
-### 1) Add your runtime config
-Before the module script in `index.html`, inject config like:
+This prevents exposing sensitive provider keys in browser code.
+
+## Project files to create locally (do not commit secrets)
+
+1. Copy `.env.example` to `.env` and fill your real values.
+2. Copy `config.example.js` to `config.local.js` and fill your Firebase config.
+3. Load `config.local.js` before `index.html` module script.
+
+Example snippet to add in `index.html` before the module script:
 
 ```html
-<script>
-  window.FINELEDGER_CONFIG = {
-    firebase: {
-      apiKey: "...",
-      authDomain: "...",
-      projectId: "...",
-      storageBucket: "...",
-      messagingSenderId: "...",
-      appId: "..."
-    },
-    geminiApiKey: "OPTIONAL"
-  };
-</script>
+<script src="./config.local.js"></script>
 ```
 
-You can keep this in a separate file if you prefer.
+## Install and run
 
-### Security hardening (important)
-- Do **not** commit real runtime config or API keys into `index.html`.
-- Serve `window.FINELEDGER_CONFIG` from a deployment-time file that is excluded from git (for example `config.local.js` in local dev, or host-injected script in production).
-- Firebase web `apiKey` values are not authentication secrets, but they should still be treated as project identifiers:
-  - Restrict usage with strict Firebase Auth + Firestore rules.
-  - Keep authorized domains tight.
-  - Enable Firebase App Check for abuse reduction.
-- Gemini API keys are sensitive for billing/abuse. Prefer a server-side proxy endpoint instead of exposing `geminiApiKey` directly to browsers.
+```bash
+npm install
+npm run start
+```
 
-### 2) Firebase console checks
-- Enable **Authentication > Google provider** (optional now).
-- Enable **Authentication > Email/Password provider**.
-- In Email/Password provider settings, turn on:
-  - **Email/Password**
-  - **Email link (passwordless sign-in)**
-- Create Firestore database.
-- Add authorized domain(s) for your deployed site.
+Server starts at `http://localhost:8787` by default.
 
-> You do **not** need Firebase Realtime Database for this app. FineLedger stores data in **Cloud Firestore** only.
+## Backend hardening included
 
-If you see `auth/unauthorized-domain`:
-- Go to **Firebase Console → Authentication → Settings → Authorized domains**.
-- Add the exact host you are opening the app from (for example `localhost`, `127.0.0.1`, or `your-site.web.app`).
-- Confirm your runtime config points to the same Firebase project where you added the domain.
+`server/server.js` includes:
+- `helmet` secure headers
+- `express-rate-limit` to reduce abuse
+- strict request size cap
+- CORS allowlist via `ALLOWED_ORIGINS`
+- `x-powered-by` disabled
+- validation for request payload shape
 
-### 3) Firestore rules (starter)
-Use this as a secure baseline and adjust to your needs:
+## Frontend runtime config
+
+Use this shape:
+
+```js
+window.FINELEDGER_CONFIG = {
+  firebase: {
+    apiKey: "...",
+    authDomain: "...",
+    projectId: "...",
+    storageBucket: "...",
+    messagingSenderId: "...",
+    appId: "..."
+  },
+  apiBaseUrl: "http://localhost:8787"
+};
+```
+
+## Firestore rules baseline
 
 ```txt
 rules_version = '2';
@@ -83,25 +78,9 @@ service cloud.firestore {
 }
 ```
 
-## Deploy quickly with Firebase Hosting
+## Important deployment notes
 
-```bash
-npm i -g firebase-tools
-firebase login
-firebase init hosting
-firebase deploy
-```
-
-Use:
-- public directory = `.`
-- single-page app rewrite = `n`
-
-## Data model
-- `users/{uid}/transactions/{id}`
-- `users/{uid}/goals/{id}`
-- `users/{uid}/budgets/{category}`
-
-## Notes
-- Currency is currently USD in UI formatting; adjust in `money()` function.
-- Gemini insights are optional and disabled automatically when no API key is provided.
-- This app is cloud-first: if Firebase setup is broken, writes are blocked until config/domain/rules are fixed (no local-storage fallback).
+- Firebase `apiKey` is a public client identifier, not a private secret.
+- Gemini API key **must remain server-side only**.
+- In production, set `ALLOWED_ORIGINS` to your exact deployed frontend origin(s).
+- Use HTTPS for frontend and backend.
