@@ -8,6 +8,7 @@ This build removes external API usage so the repository can be safely public.
 - No backend server and no AI provider integration.
 - No API keys or secret environment variables required.
 - App data is saved in browser `localStorage` only.
+- API credentials can be entered from the in-app **API Settings** tab and are saved in browser `localStorage` (instead of editing files).
 
 ## Run
 
