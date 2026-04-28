@@ -198,6 +198,8 @@
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
     const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const EMAIL_LINK_STORAGE_KEY = "fineledgerEmailForSignIn";
+    const AUTH_BUTTON_IDS = ["btn-google-auth", "btn-email-signin", "btn-email-create", "btn-email-link"];
+    let authBusy = false;
 
     function clearAuthNotices() {
       $("auth-error").classList.add("hidden");
@@ -216,6 +218,33 @@
       $("auth-error").classList.add("hidden");
     }
 
+    function setAuthBusy(busy) {
+      authBusy = busy;
+      for (const id of AUTH_BUTTON_IDS) {
+        const btn = $(id);
+        btn.disabled = busy;
+        btn.classList.toggle("opacity-60", busy);
+        btn.classList.toggle("cursor-not-allowed", busy);
+      }
+    }
+
+    function readEmailPassword() {
+      return {
+        email: $("auth-email").value.trim().toLowerCase(),
+        password: $("auth-password").value
+      };
+    }
+
+    async function runAuthAction(task) {
+      if (authBusy) return;
+      setAuthBusy(true);
+      try {
+        await task();
+      } finally {
+        setAuthBusy(false);
+      }
+    }
+
     function formatAuthError(err) {
       const code = err?.code ?? "";
       const message = err?.message ?? "Unknown auth error.";
@@ -226,6 +255,22 @@
       if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
         return "Sign-in failed: Invalid email or password.";
       }
+      if (code === "auth/operation-not-allowed") {
+        return "Sign-in failed: Email/Password sign-in is not enabled in Firebase. Enable it in Firebase Console → Authentication → Sign-in method.";
+      }
+      if (code === "auth/app-not-authorized") {
+        return "Sign-in failed: Firebase rejected this app/domain. Verify your Firebase config and authorized domains in Firebase Console, then reload.";
+      }
+      if (code === "auth/invalid-api-key") {
+        return "Sign-in failed: Invalid Firebase API key. Update window.FINELEDGER_CONFIG with your real Firebase project credentials.";
+      }
+      if (code === "auth/network-request-failed") {
+        return "Sign-in failed: Network error. Check your connection and try again.";
+      }
+      if (code === "auth/too-many-requests") {
+        return "Sign-in blocked temporarily due to too many attempts. Wait a minute and try again.";
+      }
+      if (code === "auth/user-disabled") return "Sign-in failed: This account has been disabled.";
       if (code === "auth/invalid-email") return "Sign-in failed: Please enter a valid email address.";
       if (code === "auth/weak-password") return "Account creation failed: Password must be at least 6 characters.";
       if (code === "auth/email-already-in-use") return "Account creation failed: This email already has an account. Try Sign in.";
@@ -466,41 +511,70 @@
         handleCodeInApp: true
       };
 
-      $("btn-google-auth").addEventListener("click", async () => {
+      $("btn-google-auth").addEventListener("click", () => runAuthAction(async () => {
         clearAuthNotices();
         try {
           await signInWithPopup(state.auth, provider);
         } catch (err) {
           showAuthError(formatAuthError(err));
         }
-      });
+      }));
 
-      $("btn-email-signin").addEventListener("click", async () => {
+      $("btn-email-signin").addEventListener("click", () => runAuthAction(async () => {
         clearAuthNotices();
-        const email = $("auth-email").value.trim();
-        const password = $("auth-password").value;
+        const { email, password } = readEmailPassword();
+        if (!email) {
+          showAuthError("Sign-in failed: Enter your email address.");
+          return;
+        }
+        if (!password) {
+          showAuthError("Sign-in failed: Enter your password to continue.");
+          return;
+        }
         try {
           await signInWithEmailAndPassword(state.auth, email, password);
+          showAuthMessage("Welcome back. Signed in successfully.");
         } catch (err) {
           showAuthError(formatAuthError(err));
         }
-      });
+      }));
 
-      $("btn-email-create").addEventListener("click", async () => {
+      $("btn-email-create").addEventListener("click", () => runAuthAction(async () => {
         clearAuthNotices();
-        const email = $("auth-email").value.trim();
-        const password = $("auth-password").value;
+        const { email, password } = readEmailPassword();
+        if (!email) {
+          showAuthError("Account creation failed: Enter your email address.");
+          return;
+        }
+        if (!password) {
+          showAuthError("Account creation failed: Enter a password.");
+          return;
+        }
+        if (password.length < 6) {
+          showAuthError("Account creation failed: Password must be at least 6 characters.");
+          return;
+        }
         try {
           await createUserWithEmailAndPassword(state.auth, email, password);
           showAuthMessage("Account created and signed in.");
         } catch (err) {
+          if (err?.code === "auth/email-already-in-use") {
+            try {
+              await signInWithEmailAndPassword(state.auth, email, password);
+              showAuthMessage("Account already existed, so we signed you in.");
+              return;
+            } catch (signInErr) {
+              showAuthError("Account already exists for this email, but the password did not match. Use Sign in or reset your password.");
+              return;
+            }
+          }
           showAuthError(formatAuthError(err));
         }
-      });
+      }));
 
-      $("btn-email-link").addEventListener("click", async () => {
+      $("btn-email-link").addEventListener("click", () => runAuthAction(async () => {
         clearAuthNotices();
-        const email = $("auth-email").value.trim();
+        const { email } = readEmailPassword();
         if (!email) {
           showAuthError("Sign-in failed: Enter your email address before requesting a magic link.");
           return;
@@ -512,7 +586,7 @@
         } catch (err) {
           showAuthError(formatAuthError(err));
         }
-      });
+      }));
 
       $("btn-sign-out").addEventListener("click", () => signOut(state.auth));
 
