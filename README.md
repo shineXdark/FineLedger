@@ -2,6 +2,8 @@
 
 FineLedger Pro is a single-page budget system with:
 - Google sign-in (Firebase Auth)
+- Email/password sign-in + account creation (Firebase Auth)
+- Passwordless email link sign-in (Firebase Auth magic link)
 - Real-time transaction ledger (Firestore)
 - Savings goals tracker
 - Monthly category budgets with health indicators
@@ -42,7 +44,11 @@ Before the module script in `index.html`, inject config like:
 You can keep this in a separate file if you prefer.
 
 ### 2) Firebase console checks
-- Enable **Authentication > Google provider**.
+- Enable **Authentication > Google provider** (optional now).
+- Enable **Authentication > Email/Password provider**.
+- In Email/Password provider settings, turn on:
+  - **Email/Password**
+  - **Email link (passwordless sign-in)**
 - Create Firestore database.
 - Add authorized domain(s) for your deployed site.
 
@@ -50,6 +56,11 @@ If you see `auth/unauthorized-domain`:
 - Go to **Firebase Console → Authentication → Settings → Authorized domains**.
 - Add the exact host you are opening the app from (for example `localhost`, `127.0.0.1`, or `your-site.web.app`).
 - Confirm your runtime config points to the same Firebase project where you added the domain.
+
+If you see `auth/operation-not-allowed` while creating/signing in:
+- Go to **Firebase Console → Authentication → Sign-in method**.
+- Make sure **Email/Password** is enabled.
+- If you want passwordless mode, also enable **Email link (passwordless sign-in)**.
 
 ### 3) Firestore rules (starter)
 Use this as a secure baseline and adjust to your needs:

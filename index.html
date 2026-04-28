@@ -30,9 +30,23 @@
       <h1 class="text-3xl font-bold mt-2">Secure Finance Workspace</h1>
       <p class="mt-2 text-slate-600">Sign in once, sync across devices, and stop relying on Live Server.</p>
       <div id="auth-error" class="hidden mt-4 text-sm rounded-lg p-3 border border-rose-300 bg-rose-50 text-rose-700"></div>
-      <button id="btn-google-auth" class="mt-6 w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
-        <span>🔐</span><span>Continue with Google</span>
-      </button>
+      <div class="mt-6 space-y-3 text-left">
+        <button id="btn-google-auth" class="w-full bg-white border border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-3">
+          <span>🔐</span><span>Continue with Google</span>
+        </button>
+
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+          <input id="auth-email" type="email" placeholder="Email address" class="sm:col-span-3 px-3 py-2 border border-slate-300 rounded-lg" />
+          <input id="auth-password" type="password" placeholder="Password" class="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button id="btn-email-signin" class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 text-sm font-semibold">Sign in (Email + Password)</button>
+          <button id="btn-email-create" class="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold">Create account</button>
+        </div>
+
+        <button id="btn-email-link" class="w-full px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-semibold">Send magic sign-in link to email</button>
+        <p id="auth-message" class="hidden text-xs rounded-lg p-3 border border-emerald-300 bg-emerald-50 text-emerald-700"></p>
+      </div>
       <p class="mt-4 text-xs text-slate-500">Host this page using Firebase Hosting, Netlify, or GitHub Pages.</p>
     </div>
   </div>
@@ -153,7 +167,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
 
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
@@ -183,6 +197,24 @@
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
     const normalizeDomain = (origin) => origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const EMAIL_LINK_STORAGE_KEY = "fineledgerEmailForSignIn";
+
+    function clearAuthNotices() {
+      $("auth-error").classList.add("hidden");
+      $("auth-message").classList.add("hidden");
+    }
+
+    function showAuthError(message) {
+      $("auth-error").textContent = message;
+      $("auth-error").classList.remove("hidden");
+      $("auth-message").classList.add("hidden");
+    }
+
+    function showAuthMessage(message) {
+      $("auth-message").textContent = message;
+      $("auth-message").classList.remove("hidden");
+      $("auth-error").classList.add("hidden");
+    }
 
     function formatAuthError(err) {
       const code = err?.code ?? "";
@@ -191,6 +223,21 @@
         const host = normalizeDomain(window.location.origin);
         return `Sign-in failed: This domain is not allowed for Google login yet. Add "${host}" in Firebase Console → Authentication → Settings → Authorized domains, then reload and try again.`;
       }
+      if (code === "auth/operation-not-allowed") {
+        return "Auth failed: This sign-in method is not enabled in Firebase Console. Turn on Email/Password (and Email link if needed) in Authentication → Sign-in method.";
+      }
+      if (code === "auth/admin-restricted-operation") {
+        return "Auth failed: This operation is restricted by your Firebase project settings. Check Authentication provider configuration.";
+      }
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        return "Sign-in failed: Invalid email or password.";
+      }
+      if (code === "auth/invalid-login-credentials") return "Sign-in failed: Invalid email or password.";
+      if (code === "auth/invalid-email") return "Sign-in failed: Please enter a valid email address.";
+      if (code === "auth/weak-password") return "Account creation failed: Password must be at least 6 characters.";
+      if (code === "auth/email-already-in-use") return "Account creation failed: This email already has an account. Try Sign in.";
+      if (code === "auth/missing-password") return "Sign-in failed: Enter your password to continue.";
+      if (code === "auth/missing-email") return "Sign-in failed: Enter your email address.";
       return `Sign-in failed: ${message}`;
     }
 
@@ -421,18 +468,142 @@
       state.auth = getAuth(app);
       state.db = getFirestore(app);
       const provider = new GoogleAuthProvider();
+      const linkSettings = {
+        url: `${window.location.origin}${window.location.pathname}`,
+        handleCodeInApp: true
+      };
 
       $("btn-google-auth").addEventListener("click", async () => {
-        $("auth-error").classList.add("hidden");
+        clearAuthNotices();
         try {
           await signInWithPopup(state.auth, provider);
         } catch (err) {
-          $("auth-error").textContent = formatAuthError(err);
-          $("auth-error").classList.remove("hidden");
+          showAuthError(formatAuthError(err));
+        }
+      });
+
+      const getEmailPasswordInput = () => ({
+        email: $("auth-email").value.trim().toLowerCase(),
+        password: $("auth-password").value
+      });
+
+      const validateEmailPasswordInput = ({ email, password }) => {
+        if (!email) return "Sign-in failed: Enter your email address.";
+        if (!password) return "Sign-in failed: Enter your password to continue.";
+        if (password.length < 6) return "Password must be at least 6 characters.";
+        return "";
+      };
+
+      async function signInWithPasswordWithHelpfulErrors(email, password) {
+        try {
+          await signInWithEmailAndPassword(state.auth, email, password);
+        } catch (err) {
+          if (err?.code === "auth/user-not-found") {
+            showAuthError("No account exists for that email yet. Use Create account first.");
+            return;
+          }
+          throw err;
+        }
+      }
+
+      $("btn-email-signin").addEventListener("click", async () => {
+        clearAuthNotices();
+        const { email, password } = getEmailPasswordInput();
+        const validationError = validateEmailPasswordInput({ email, password });
+        if (validationError) {
+          showAuthError(validationError);
+          return;
+        }
+        try {
+          await signInWithPasswordWithHelpfulErrors(email, password);
+        } catch (err) {
+          showAuthError(formatAuthError(err));
+        }
+      });
+
+      $("btn-email-create").addEventListener("click", async () => {
+        clearAuthNotices();
+        const { email, password } = getEmailPasswordInput();
+        const validationError = validateEmailPasswordInput({ email, password });
+        if (validationError) {
+          showAuthError(validationError);
+          return;
+        }
+        try {
+          await createUserWithEmailAndPassword(state.auth, email, password);
+          showAuthMessage("Account created and signed in.");
+        } catch (err) {
+          if (err?.code !== "auth/email-already-in-use") {
+            showAuthError(formatAuthError(err));
+            return;
+          }
+
+          try {
+            const methods = await fetchSignInMethodsForEmail(state.auth, email);
+            if (methods.includes("password")) {
+              try {
+                await signInWithEmailAndPassword(state.auth, email, password);
+                showAuthMessage("This account already existed, so we signed you in instead.");
+              } catch (signInErr) {
+                showAuthError("Account exists, but this password is incorrect. Use the right password or reset it in Firebase Auth.");
+              }
+              return;
+            }
+
+            if (methods.includes("google.com")) {
+              showAuthError("This email is registered with Google sign-in. Use Continue with Google, or link providers from your account settings later.");
+              return;
+            }
+
+            if (methods.includes("emailLink")) {
+              showAuthError("This email is configured for magic-link sign-in. Use 'Send magic sign-in link to email'.");
+              return;
+            }
+
+            showAuthError("This email already exists with another sign-in method. Try sign-in instead of creating a new account.");
+          } catch {
+            showAuthError("Account appears to exist already. Try Sign in first, then use another method if needed.");
+          }
+        }
+      });
+
+      $("btn-email-link").addEventListener("click", async () => {
+        clearAuthNotices();
+        const email = $("auth-email").value.trim();
+        if (!email) {
+          showAuthError("Sign-in failed: Enter your email address before requesting a magic link.");
+          return;
+        }
+        try {
+          await sendSignInLinkToEmail(state.auth, email, linkSettings);
+          window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
+          showAuthMessage("Magic link sent. Check your inbox, then open the link on this same device/browser.");
+        } catch (err) {
+          showAuthError(formatAuthError(err));
         }
       });
 
       $("btn-sign-out").addEventListener("click", () => signOut(state.auth));
+
+      if (isSignInWithEmailLink(state.auth, window.location.href)) {
+        clearAuthNotices();
+        let email = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY) || $("auth-email").value.trim();
+        if (!email) {
+          email = window.prompt("Confirm your email to complete sign-in:");
+        }
+        if (email) {
+          try {
+            await signInWithEmailLink(state.auth, email, window.location.href);
+            window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            showAuthMessage("Email link verified. You are now signed in.");
+          } catch (err) {
+            showAuthError(formatAuthError(err));
+          }
+        } else {
+          showAuthError("Email link sign-in was canceled because no email was provided.");
+        }
+      }
 
       onAuthStateChanged(state.auth, async (user) => {
         state.unsub.forEach((u) => u());
@@ -532,8 +703,7 @@
     try {
       await hookAuthAndData();
     } catch (err) {
-      $("auth-error").textContent = `Firebase init failed: ${err.message}. Add your Firebase config to window.FINELEDGER_CONFIG.`;
-      $("auth-error").classList.remove("hidden");
+      showAuthError(`Firebase init failed: ${err.message}. Add your Firebase config to window.FINELEDGER_CONFIG.`);
     }
   </script>
 </body>
