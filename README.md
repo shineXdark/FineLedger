@@ -13,7 +13,7 @@ This build removes AI provider integrations and is focused on **Firebase cloud s
   - Messaging Sender ID
   - App ID
   - Workspace ID
-- Financial ledger data (`transactions`, `budgets`, `goals`, `currency`) is saved to **Firestore only**.
+- Financial ledger data (`transactions`, `budgets`, `goals`, `currency`) is saved to **Firestore only** and scoped to the signed-in Google account (`request.auth.uid`) inside your workspace.
 - Firebase config is entered in-app and saved in browser local storage so sensitive values are not committed to this repository.
 - Added a prominent cloud status indicator so you can clearly see whether cloud sync is active.
 
@@ -44,5 +44,5 @@ service cloud.firestore {
 }
 ```
 
-- If cloud is disconnected, the app blocks finance writes.
+- If cloud is disconnected, or no Google account is signed in, the app blocks finance writes.
 - This build does **not** persist financial data locally.

@@ -272,6 +272,7 @@
         .doc(cloud.user.uid)
         .collection("data")
         .doc("ledger");
+      $("firebase-settings-status").textContent = `Syncing personal ledger for ${cloud.user.email || cloud.user.uid} in workspace ${cloud.workspaceId}.`;
       cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
         cloud.syncing = true;
         if (snap.exists) applyCloudPayload(snap.data() || {});
@@ -308,11 +309,16 @@
     function renderCloudIndicator() {
       const indicator = $("cloud-indicator");
       const status = $("data-status");
-      if (cloud.connected) {
+      if (cloud.connected && cloud.user) {
         indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700";
         status.className = "card p-3 text-sm border-emerald-300 bg-emerald-50 text-emerald-800";
         status.innerHTML = "Cloud mode connected. Financial data is synced to Firestore only (no local ledger persistence).";
+      } else if (cloud.connected && !cloud.user) {
+        indicator.textContent = "☁️ Connected - sign in required";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700";
+        status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
+        status.innerHTML = "Firebase is connected, but you must sign in with Google before personal data is loaded or saved.";
       } else {
         indicator.textContent = "☁️ Not connected to cloud";
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700";
@@ -342,9 +348,15 @@
     }
 
     function requireCloudOrWarn() {
-      if (cloud.connected) return true;
-      $("firebase-settings-status").textContent = "Cloud is not connected. Please configure Firebase in Cloud Settings first.";
-      return false;
+      if (!cloud.connected) {
+        $("firebase-settings-status").textContent = "Cloud is not connected. Please configure Firebase in Cloud Settings first.";
+        return false;
+      }
+      if (!cloud.user || !cloud.docRef) {
+        $("firebase-settings-status").textContent = "Sign in with Google to load your personal ledger before editing data.";
+        return false;
+      }
+      return true;
     }
 
     function readFirebaseForm() {
