@@ -414,6 +414,8 @@
       cloud.app = null;
       cloud.db = null;
       cloud.docRef = null;
+      cloud.auth = null;
+      cloud.user = null;
       cloud.connected = false;
       cloud.workspaceId = "";
       renderCloudIndicator();
@@ -437,9 +439,11 @@
       }, `fineledger-${config.workspaceId}-${Date.now()}`);
 
       cloud.db = cloud.app.firestore();
+      cloud.auth = cloud.app.auth();
       cloud.workspaceId = config.workspaceId;
       saveFirebaseConfigLocal(config);
       cloud.connected = true;
+      bindAuthListener();
       wireUserLedgerDoc();
       renderCloudIndicator();
       updateGateScreens();
@@ -504,16 +508,9 @@
       $("currency-select").value = state.currency;
     }
 
-    function initAuth(config) {
-      if (cloud.auth || !config) return;
-      const authApp = firebase.initializeApp({
-        apiKey: config.apiKey,
-        authDomain: config.authDomain,
-        projectId: config.projectId,
-        appId: config.appId
-      }, `fineledger-auth-${Date.now()}`);
-      cloud.auth = authApp.auth();
-      cloud.auth.onAuthStateChanged(async (user) => {
+    function bindAuthListener() {
+      if (!cloud.auth) return;
+      cloud.auth.onAuthStateChanged((user) => {
         cloud.user = user || null;
         wireUserLedgerDoc();
         renderAuthStatus();
@@ -796,7 +793,6 @@
           $("firebase-settings-status").textContent = "Workspace ID is required.";
           return;
         }
-        initAuth(config);
         try {
           await connectCloud(config);
         } catch (err) {
