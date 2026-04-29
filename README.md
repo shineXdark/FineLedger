@@ -30,5 +30,19 @@ npx serve .
 ## Important notes
 
 - You must create/configure your Firebase project and Firestore rules.
+- Recommended strict Firestore rules for this app structure:
+
+```txt
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Workspace data is private per signed-in user.
+    match /fineledgerWorkspaces/{workspaceId}/users/{userId}/data/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
 - If cloud is disconnected, the app blocks finance writes.
 - This build does **not** persist financial data locally.
