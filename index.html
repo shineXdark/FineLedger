@@ -10,20 +10,24 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <style>
-    :root { color-scheme: light; }
+    :root { color-scheme: light; --bg1:#eef2ff; --bg2:#f8fafc; --bg3:#ecfeff; --card:#ffffffcc; --line:#dbe5f0; --text:#0f172a; --muted:#475569; --primary:#4f46e5; --primary-2:#7c3aed; --success:#059669; --danger:#e11d48; }
     :root.dark { color-scheme: dark; }
     body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    .glass { background: rgba(255,255,255,.78); backdrop-filter: blur(8px); }
-    .card { border: 1px solid rgb(226 232 240); border-radius: 1rem; box-shadow: 0 8px 20px rgba(15,23,42,.06); background: white; }
-    .theme-bg { background: linear-gradient(135deg, rgb(224 231 255), rgb(248 250 252), rgb(207 250 254)); }
+    .glass { background: var(--card); backdrop-filter: blur(14px); }
+    .hero-glow::before{content:"";position:absolute;inset:-1px;border-radius:1.25rem;background:linear-gradient(135deg,rgba(79,70,229,.26),rgba(56,189,248,.24),rgba(16,185,129,.20));filter:blur(18px);z-index:-1;opacity:.85;}
+    .card { border: 1px solid var(--line); border-radius: 1rem; box-shadow: 0 10px 30px rgba(2,8,23,.08); background: var(--card); }
+    .theme-bg { background: radial-gradient(1200px 700px at 15% -10%, #c7d2fe 0%, transparent 55%), radial-gradient(900px 600px at 90% 10%, #a5f3fc 0%, transparent 50%), linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3)); }
     :root.dark .theme-bg { background: linear-gradient(135deg, rgb(2 6 23), rgb(15 23 42), rgb(30 41 59)); }
     .dark .text-slate-600,.dark .text-slate-500 { color: rgb(148 163 184) !important; }
     .dark .bg-slate-50,.dark .bg-slate-100 { background-color: rgb(30 41 59) !important; }
     .dark .border-slate-100,.dark .border-slate-200,.dark .border-slate-300 { border-color: rgb(71 85 105) !important; }
     .dark input,.dark select,.dark textarea,.dark table thead { background-color: rgb(15 23 42) !important; color: rgb(226 232 240) !important; }
-    :root.dark body { background: rgb(15 23 42); color: rgb(226 232 240); }
+:root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
-    .tab-active { background: rgb(15 23 42); color: white; }
+    .tab-active { background: linear-gradient(135deg,var(--primary),var(--primary-2)); color: white; box-shadow: 0 6px 18px rgba(79,70,229,.35);}
+    .chip{border:1px solid var(--line);background:#fff8;padding:.35rem .7rem;border-radius:999px;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-weight:600}
+    .btn-primary:hover{filter:brightness(1.05)}
     .pill-income { background: rgb(220 252 231); color: rgb(22 101 52); }
     .pill-expense { background: rgb(254 226 226); color: rgb(153 27 27); }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -53,13 +57,14 @@
   </section>
 
   <main id="app-shell" class="hidden max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-    <header class="card p-4 md:p-5 flex flex-wrap items-center justify-between gap-3 glass">
+    <header class="card hero-glow relative p-4 md:p-5 flex flex-wrap items-center justify-between gap-3 glass">
       <div>
-        <h1 class="text-2xl font-bold">FineLedger Pro Dashboard</h1>
+        <h1 class="text-2xl font-bold tracking-tight">FineLedger Pro Dashboard</h1>
+        <div class="mt-2 flex gap-2"><span class="chip">Realtime Cloud</span><span class="chip">Professional UI</span><span class="chip">Secure by Design</span></div>
         <p class="text-sm text-slate-600">Cloud-only finance tracking with your own Firebase project settings.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button id="dark-mode-toggle" class="px-3 py-2 rounded-lg text-sm border border-slate-300 bg-white">🌙 Dark</button>
+        <button id="dark-mode-toggle" class="px-3 py-2 rounded-lg text-sm border border-slate-300 bg-white hover:bg-slate-50">🌙 Dark</button>
         <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
           <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
@@ -74,7 +79,7 @@
       Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.
     </div>
 
-    <section class="card p-3 md:p-4 flex flex-wrap gap-2" id="tabs">
+    <section class="card p-3 md:p-4 flex flex-wrap gap-2 bg-white/70" id="tabs">
       <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
       <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
       <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
@@ -83,11 +88,11 @@
 
     <section id="view-overview" class="view space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <article class="card p-5"><p class="text-xs uppercase text-slate-500">Net Balance</p><p id="kpi-balance" class="text-2xl font-bold mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase text-slate-500">Income (Month)</p><p id="kpi-income" class="text-2xl font-bold text-emerald-600 mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase text-slate-500">Expenses (Month)</p><p id="kpi-expense" class="text-2xl font-bold text-rose-600 mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase text-slate-500">Savings Rate</p><p id="kpi-savings" class="text-2xl font-bold text-indigo-600 mt-2">0%</p></article>
-        <article class="card p-5"><p class="text-xs uppercase text-slate-500">Budget Health</p><p id="kpi-health" class="text-2xl font-bold text-cyan-700 mt-2">Healthy</p></article>
+        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Net Balance</p><p id="kpi-balance" class="text-2xl font-bold mt-2">$0</p></article>
+        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Income (Month)</p><p id="kpi-income" class="text-2xl font-bold text-emerald-600 mt-2">$0</p></article>
+        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Expenses (Month)</p><p id="kpi-expense" class="text-2xl font-bold text-rose-600 mt-2">$0</p></article>
+        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Savings Rate</p><p id="kpi-savings" class="text-2xl font-bold text-indigo-600 mt-2">0%</p></article>
+        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Budget Health</p><p id="kpi-health" class="text-2xl font-bold text-cyan-700 mt-2">Healthy</p></article>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -119,7 +124,7 @@
             <option value="income">Income</option>
           </select>
           <input id="tx-amount" type="number" min="0.01" step="0.01" placeholder="Amount" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg" required />
-          <button class="md:col-span-1 px-3 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-700" type="submit">Save</button>
+          <button class="md:col-span-1 px-3 py-2 rounded-lg btn-primary" type="submit">Save</button>
         </form>
       </div>
 
@@ -150,7 +155,7 @@
         <form id="budget-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <select id="budget-category" class="px-3 py-2 border border-slate-300 rounded-lg"></select>
           <input id="budget-limit" type="number" min="1" step="0.01" placeholder="Monthly limit" class="px-3 py-2 border border-slate-300 rounded-lg" />
-          <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" type="submit">Set/Update Budget</button>
+          <button class="px-3 py-2 rounded-lg btn-primary" type="submit">Set/Update Budget</button>
           <button id="btn-reset-budgets" class="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold" type="button">Reset All</button>
         </form>
       </div>
@@ -163,7 +168,7 @@
         <form id="goal-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <input id="goal-name" type="text" placeholder="Goal name" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
           <input id="goal-target" type="number" min="1" step="0.01" placeholder="Target amount" class="px-3 py-2 border border-slate-300 rounded-lg" required />
-          <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" type="submit">Add Goal</button>
+          <button class="px-3 py-2 rounded-lg btn-primary" type="submit">Add Goal</button>
         </form>
       </div>
       <div id="goal-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
@@ -208,7 +213,7 @@
             <input id="fb-workspace-id" type="text" placeholder="my-finance-workspace" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
           <div class="md:col-span-2 flex flex-wrap gap-2">
-            <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">Save & Connect Cloud</button>
+            <button type="submit" class="px-4 py-2 rounded-lg btn-primary">Save & Connect Cloud</button>
             <button id="btn-disconnect-cloud" type="button" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">Disconnect</button>
             <button id="btn-clear-cloud-settings" type="button" class="px-4 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold">Clear Saved Config</button>
           </div>
