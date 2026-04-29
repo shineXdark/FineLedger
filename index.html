@@ -224,6 +224,7 @@
       ? Intl.supportedValuesOf("currency")
       : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
         const THEME_KEY = "fineledger_theme_v1";
+    const FIREBASE_CONFIG_KEY = "fineledger_firebase_config_v1";
 
     const state = {
       tx: [],
@@ -325,6 +326,25 @@
       };
     }
 
+    function saveFirebaseConfigLocal(config) {
+      localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
+    }
+
+    function loadFirebaseConfigLocal() {
+      try {
+        const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function clearFirebaseConfigLocal() {
+      localStorage.removeItem(FIREBASE_CONFIG_KEY);
+    }
+
     function renderFirebaseForm(config) {
       $("fb-api-key").value = config?.apiKey || "";
       $("fb-auth-domain").value = config?.authDomain || "";
@@ -373,6 +393,7 @@
 
       cloud.db = cloud.app.firestore();
       cloud.workspaceId = config.workspaceId;
+      saveFirebaseConfigLocal(config);
       const pingRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("meta").doc("ping");
       await pingRef.set({ updatedAt: Date.now() }, { merge: true });
       cloud.connected = true;
@@ -770,13 +791,17 @@
 
       $("btn-clear-cloud-settings").addEventListener("click", () => {
         renderFirebaseForm(null);
-        $("firebase-settings-status").textContent = "Saved form values cleared from screen. Nothing is stored in browser.";
+        clearFirebaseConfigLocal();
+        $("firebase-settings-status").textContent = "Saved form values cleared from screen and local browser storage.";
       });
     }
 
     async function bootstrapCloud() {
-      renderFirebaseForm(null);
-      $("firebase-settings-status").textContent = "Add your Firebase APIs first to start. API values are never saved locally.";
+      const savedConfig = loadFirebaseConfigLocal();
+      renderFirebaseForm(savedConfig);
+      $("firebase-settings-status").textContent = savedConfig
+        ? "Saved Firebase config loaded from this browser. Connect, then sign in with Google."
+        : "Add your Firebase APIs first to start. Config can be saved in this browser on successful connect.";
     }
 
 const settingsSection = document.getElementById("view-settings");
