@@ -172,7 +172,7 @@
     <section id="view-settings" class="view hidden space-y-4">
       <div class="card p-5">
         <h2 class="font-bold mb-1">Firebase Cloud Connection</h2>
-        <p class="text-sm text-slate-600">Paste your Firebase client configuration below. This form stores only Firebase config locally so secrets stay out of your public repository.</p>
+        <p class="text-sm text-slate-600">Paste your Firebase client configuration below. This form does not persist API values. Enter your own Firebase values each session to avoid leaks.</p>
         <form id="firebase-settings-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div class="md:col-span-2 flex flex-wrap gap-2 items-center">
             <button id="btn-google-login" type="button" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-semibold">Sign in with Google</button>
@@ -223,8 +223,7 @@
     const CURRENCY_OPTIONS = typeof Intl.supportedValuesOf === "function"
       ? Intl.supportedValuesOf("currency")
       : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
-    const FIREBASE_CONFIG_KEY = "fineledger_firebase_config_v1";
-    const THEME_KEY = "fineledger_theme_v1";
+        const THEME_KEY = "fineledger_theme_v1";
 
     const state = {
       tx: [],
@@ -314,24 +313,6 @@
       return false;
     }
 
-    function readStoredFirebaseConfig() {
-      const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
-      if (!raw) return null;
-      try {
-        return JSON.parse(raw);
-      } catch {
-        return null;
-      }
-    }
-
-    function storeFirebaseConfig(config) {
-      localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
-    }
-
-    function clearStoredFirebaseConfig() {
-      localStorage.removeItem(FIREBASE_CONFIG_KEY);
-    }
-
     function readFirebaseForm() {
       return {
         apiKey: $("fb-api-key").value.trim(),
@@ -353,7 +334,7 @@
       $("fb-app-id").value = config?.appId || "";
       $("fb-workspace-id").value = config?.workspaceId || "";
       $("firebase-settings-status").textContent = config
-        ? "Firebase config loaded from local browser storage."
+        ? "Firebase form populated."
         : "No Firebase config saved yet.";
     }
 
@@ -426,8 +407,7 @@
       if (!cloud.auth) return;
       await cloud.auth.signOut();
       await disconnectCloud();
-      const saved = readStoredFirebaseConfig();
-      renderFirebaseForm(saved);
+      renderFirebaseForm(null);
     }
 
     
@@ -761,7 +741,6 @@
           $("firebase-settings-status").textContent = "Workspace ID is required.";
           return;
         }
-        storeFirebaseConfig(config);
         initAuth(config);
         try {
           await connectCloud(config);
@@ -786,30 +765,18 @@
       $("gate-google-login").addEventListener("click", async () => {
         try { 
           await signInWithGoogle();
-          const saved = readStoredFirebaseConfig();
-          if (saved) await connectCloud(saved);
         } catch (err) { $("firebase-settings-status").textContent = `Google sign-in failed: ${err.message}`; }
       });
 
       $("btn-clear-cloud-settings").addEventListener("click", () => {
-        clearStoredFirebaseConfig();
         renderFirebaseForm(null);
+        $("firebase-settings-status").textContent = "Saved form values cleared from screen. Nothing is stored in browser.";
       });
     }
 
     async function bootstrapCloud() {
-      const saved = readStoredFirebaseConfig();
-      renderFirebaseForm(saved);
-      if (!saved) {
-        $("firebase-settings-status").textContent = "Add your Firebase APIs first to start.";
-        return;
-      }
-      try {
-        initAuth(saved);
-        await connectCloud(saved);
-      } catch (err) {
-        $("firebase-settings-status").textContent = `Auto-connect failed: ${err.message}`;
-      }
+      renderFirebaseForm(null);
+      $("firebase-settings-status").textContent = "Add your Firebase APIs first to start. API values are never saved locally.";
     }
 
 const settingsSection = document.getElementById("view-settings");
