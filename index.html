@@ -220,10 +220,19 @@
 
   <script>
     const DEFAULT_CATEGORIES = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Health", "Entertainment", "Travel", "Education", "Salary", "Freelance", "Misc"];
+    const CURRENCY_FALLBACK = [
+      "AED","AFN","ALL","AMD","ANG","AOA","ARS","AUD","AWG","AZN","BAM","BBD","BDT","BGN","BHD","BIF","BMD","BND","BOB","BRL","BSD","BTN","BWP","BYN","BZD",
+      "CAD","CDF","CHF","CLP","CNY","COP","CRC","CUP","CVE","CZK","DJF","DKK","DOP","DZD","EGP","ERN","ETB","EUR","FJD","FKP","FOK","GBP","GEL","GGP","GHS",
+      "GIP","GMD","GNF","GTQ","GYD","HKD","HNL","HRK","HTG","HUF","IDR","ILS","IMP","INR","IQD","IRR","ISK","JEP","JMD","JOD","JPY","KES","KGS","KHR","KID",
+      "KMF","KRW","KWD","KYD","KZT","LAK","LBP","LKR","LRD","LSL","LYD","MAD","MDL","MGA","MKD","MMK","MNT","MOP","MRU","MUR","MVR","MWK","MXN","MYR","MZN",
+      "NAD","NGN","NIO","NOK","NPR","NZD","OMR","PAB","PEN","PGK","PHP","PKR","PLN","PYG","QAR","RON","RSD","RUB","RWF","SAR","SBD","SCR","SDG","SEK","SGD",
+      "SHP","SLE","SLL","SOS","SRD","SSP","STN","SYP","SZL","THB","TJS","TMT","TND","TOP","TRY","TTD","TVD","TWD","TZS","UAH","UGX","USD","UYU","UZS","VES",
+      "VND","VUV","WST","XAF","XCD","XCG","XDR","XOF","XPF","YER","ZAR","ZMW","ZWL"
+    ];
     const CURRENCY_OPTIONS = typeof Intl.supportedValuesOf === "function"
       ? Intl.supportedValuesOf("currency")
-      : ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR"];
-        const THEME_KEY = "fineledger_theme_v1";
+      : CURRENCY_FALLBACK;
+    const THEME_KEY = "fineledger_theme_v1";
     const FIREBASE_CONFIG_KEY = "fineledger_firebase_config_v1";
 
     const state = {
@@ -248,6 +257,30 @@
 
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: state.currency || "USD" }).format(Number(n || 0));
+
+    function wireUserLedgerDoc() {
+      if (cloud.unsubscribe) {
+        cloud.unsubscribe();
+        cloud.unsubscribe = null;
+      }
+      cloud.docRef = null;
+      if (!cloud.connected || !cloud.user || !cloud.db) return;
+      cloud.docRef = cloud.db
+        .collection("fineledgerWorkspaces")
+        .doc(cloud.workspaceId)
+        .collection("users")
+        .doc(cloud.user.uid)
+        .collection("data")
+        .doc("ledger");
+      cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
+        cloud.syncing = true;
+        if (snap.exists) applyCloudPayload(snap.data() || {});
+        else cloud.docRef.set(getCloudPayload(), { merge: true });
+        cloud.syncing = false;
+      }, (err) => {
+        $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
+      });
+    }
 
     function sanitizeWorkspaceId(raw) {
       return String(raw || "").trim().replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
@@ -394,21 +427,8 @@
       cloud.db = cloud.app.firestore();
       cloud.workspaceId = config.workspaceId;
       saveFirebaseConfigLocal(config);
-      const pingRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("meta").doc("ping");
-      await pingRef.set({ updatedAt: Date.now() }, { merge: true });
       cloud.connected = true;
-
-      if (cloud.user) {
-        cloud.docRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("users").doc(cloud.user.uid).collection("data").doc("ledger");
-        cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
-          cloud.syncing = true;
-          if (snap.exists) applyCloudPayload(snap.data() || {});
-          else cloud.docRef.set(getCloudPayload(), { merge: true });
-          cloud.syncing = false;
-        }, (err) => {
-          $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
-        });
-      }
+      wireUserLedgerDoc();
       renderCloudIndicator();
       updateGateScreens();
       $("firebase-settings-status").textContent = `Connected to Firestore workspace: ${config.workspaceId}`;
@@ -483,6 +503,7 @@
       cloud.auth = authApp.auth();
       cloud.auth.onAuthStateChanged(async (user) => {
         cloud.user = user || null;
+        wireUserLedgerDoc();
         renderAuthStatus();
         updateGateScreens();
       });
