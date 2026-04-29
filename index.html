@@ -18,10 +18,16 @@
     .card { border: 1px solid var(--line); border-radius: .65rem; box-shadow:none; background: var(--card); }
     .theme-bg { background: var(--bg); }
     :root.dark .theme-bg { background: linear-gradient(135deg, rgb(2 6 23), rgb(15 23 42), rgb(30 41 59)); }
-    .dark .text-slate-600,.dark .text-slate-500 { color: rgb(148 163 184) !important; }
+    .dark .text-slate-600,.dark .text-slate-500 { color: rgb(203 213 225) !important; }
     .dark .bg-slate-50,.dark .bg-slate-100 { background-color: rgb(30 41 59) !important; }
     .dark .border-slate-100,.dark .border-slate-200,.dark .border-slate-300 { border-color: rgb(71 85 105) !important; }
     .dark input,.dark select,.dark textarea,.dark table thead { background-color: rgb(15 23 42) !important; color: rgb(226 232 240) !important; }
+:root.dark .text-slate-700 { color: rgb(226 232 240) !important; }
+:root.dark .text-slate-800 { color: rgb(241 245 249) !important; }
+:root.dark .text-amber-700 { color: rgb(253 230 138) !important; }
+:root.dark .text-amber-800 { color: rgb(254 243 199) !important; }
+:root.dark .bg-amber-50 { background-color: rgb(69 26 3 / 0.5) !important; }
+:root.dark .border-amber-300 { border-color: rgb(180 83 9) !important; }
 :root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
     .tab-active { background: var(--primary); color: white; }
@@ -196,10 +202,18 @@
       <div class="card p-4">
         <div class="text-xs text-slate-500 mb-2">Given = money you lent. Taken = money you borrowed.</div>
         <div id="loan-summary" class="text-sm font-semibold mb-2"></div>
+        <h3 class="font-semibold mb-2">Pending Loans</h3>
         <div class="overflow-auto">
           <table class="w-full text-sm">
             <thead><tr class="text-left text-slate-500"><th class="p-2">Date</th><th class="p-2">Party</th><th class="p-2">Type</th><th class="p-2">Status</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
-            <tbody id="loan-table"></tbody>
+            <tbody id="loan-pending-table"></tbody>
+          </table>
+        </div>
+        <h3 class="font-semibold mb-2 mt-4">Closed Loans</h3>
+        <div class="overflow-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-500"><th class="p-2">Date</th><th class="p-2">Party</th><th class="p-2">Type</th><th class="p-2">Status</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
+            <tbody id="loan-closed-table"></tbody>
           </table>
         </div>
       </div>
@@ -759,10 +773,15 @@
 
     function renderLoans() {
       const rows = [...state.loans].sort((a,b)=>b.date.localeCompare(a.date));
+      const pendingRows = rows.filter((l)=>l.status!=="closed");
+      const closedRows = rows.filter((l)=>l.status==="closed");
       const givenOpen = rows.filter(l=>l.type==="given" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
       const takenOpen = rows.filter(l=>l.type==="taken" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
       $("loan-summary").textContent = `Outstanding Given: ${money(givenOpen)} | Outstanding Taken: ${money(takenOpen)}`;
-      $("loan-table").innerHTML = rows.length ? rows.map((l)=>`<tr class="border-b border-slate-100"><td class="p-2">${l.date}</td><td class="p-2">${l.party}</td><td class="p-2 uppercase text-xs">${l.type}</td><td class="p-2">${l.status}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right"><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No loans added.</td></tr>`;
+      const rowTemplate = (l)=>`<tr class="border-b border-slate-100"><td class="p-2">${l.date}</td><td class="p-2">${l.party}</td><td class="p-2 uppercase text-xs">${l.type}</td><td class="p-2 capitalize">${l.status}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right flex gap-3 justify-end"><button data-loan-toggle="${l.id}" class="text-sky-700">${l.status==="open" ? "Mark closed" : "Reopen"}</button><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`;
+      $("loan-pending-table").innerHTML = pendingRows.length ? pendingRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No pending loans.</td></tr>`;
+      $("loan-closed-table").innerHTML = closedRows.length ? closedRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No closed loans.</td></tr>`;
+      document.querySelectorAll("[data-loan-toggle]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; const targetLoan = state.loans.find((l)=>l.id===b.dataset.loanToggle); if(!targetLoan) return; targetLoan.status = targetLoan.status==="closed" ? "open" : "closed"; await persistCloudData(); rerenderAll(); }));
       document.querySelectorAll("[data-loan-del]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; state.loans = state.loans.filter((l)=>l.id!==b.dataset.loanDel); await persistCloudData(); rerenderAll(); }));
     }
 
