@@ -10,13 +10,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <style>
-    :root { color-scheme: light; --bg1:#eef2ff; --bg2:#f8fafc; --bg3:#ecfeff; --card:#ffffffcc; --line:#dbe5f0; --text:#0f172a; --muted:#475569; --primary:#4f46e5; --primary-2:#7c3aed; --success:#059669; --danger:#e11d48; }
+    :root { color-scheme: light; --bg:#f8fafc; --card:#ffffff; --line:#dbe1ea; --text:#0f172a; --muted:#64748b; --primary:#0f172a; --success:#166534; --danger:#991b1b; }
     :root.dark { color-scheme: dark; }
     body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    .glass { background: var(--card); backdrop-filter: blur(14px); }
-    .hero-glow::before{content:"";position:absolute;inset:-1px;border-radius:1.25rem;background:linear-gradient(135deg,rgba(79,70,229,.26),rgba(56,189,248,.24),rgba(16,185,129,.20));filter:blur(18px);z-index:-1;opacity:.85;}
-    .card { border: 1px solid var(--line); border-radius: 1rem; box-shadow: 0 10px 30px rgba(2,8,23,.08); background: var(--card); }
-    .theme-bg { background: radial-gradient(1200px 700px at 15% -10%, #c7d2fe 0%, transparent 55%), radial-gradient(900px 600px at 90% 10%, #a5f3fc 0%, transparent 50%), linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3)); }
+    
+    
+    .card { border: 1px solid var(--line); border-radius: .65rem; box-shadow:none; background: var(--card); }
+    .theme-bg { background: var(--bg); }
     :root.dark .theme-bg { background: linear-gradient(135deg, rgb(2 6 23), rgb(15 23 42), rgb(30 41 59)); }
     .dark .text-slate-600,.dark .text-slate-500 { color: rgb(148 163 184) !important; }
     .dark .bg-slate-50,.dark .bg-slate-100 { background-color: rgb(30 41 59) !important; }
@@ -24,13 +24,19 @@
     .dark input,.dark select,.dark textarea,.dark table thead { background-color: rgb(15 23 42) !important; color: rgb(226 232 240) !important; }
 :root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
-    .tab-active { background: linear-gradient(135deg,var(--primary),var(--primary-2)); color: white; box-shadow: 0 6px 18px rgba(79,70,229,.35);}
-    .chip{border:1px solid var(--line);background:#fff8;padding:.35rem .7rem;border-radius:999px;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-weight:600}
+    .tab-active { background: var(--primary); color: white; }
+    
+    .btn-primary{background:var(--primary);color:#fff;font-weight:600}
     .btn-primary:hover{filter:brightness(1.05)}
-    .pill-income { background: rgb(220 252 231); color: rgb(22 101 52); }
-    .pill-expense { background: rgb(254 226 226); color: rgb(153 27 27); }
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    .pill-income { background: rgb(240 253 244); color: rgb(22 101 52); }
+    .pill-expense { background: rgb(254 242 242); color: rgb(127 29 29); }
+    
+    .switch {position:relative;display:inline-flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--muted)}
+    .switch input{appearance:none;width:2.2rem;height:1.2rem;background:#cbd5e1;border-radius:999px;position:relative;cursor:pointer;transition:.2s}
+    .switch input::after{content:"";position:absolute;left:2px;top:2px;width:.8rem;height:.8rem;background:white;border-radius:999px;transition:.2s}
+    .switch input:checked{background:#0f172a}
+    .switch input:checked::after{transform:translateX(1rem)}
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     ::-webkit-scrollbar-track { background: #f8fafc; }
   </style>
@@ -57,14 +63,13 @@
   </section>
 
   <main id="app-shell" class="hidden max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-    <header class="card hero-glow relative p-4 md:p-5 flex flex-wrap items-center justify-between gap-3 glass">
+    <header class="card p-3 md:p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">FineLedger Pro Dashboard</h1>
-        <div class="mt-2 flex gap-2"><span class="chip">Realtime Cloud</span><span class="chip">Professional UI</span><span class="chip">Secure by Design</span></div>
-        <p class="text-sm text-slate-600">Cloud-only finance tracking with your own Firebase project settings.</p>
+        <h1 class="text-2xl font-bold tracking-tight">FineLedger Dashboard</h1>
+        <p class="text-xs text-slate-600 mt-1">Compact cloud finance tracker.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button id="dark-mode-toggle" class="px-3 py-2 rounded-lg text-sm border border-slate-300 bg-white hover:bg-slate-50">🌙 Dark</button>
+        <label class="switch"><span>Light</span><input id="dark-mode-toggle" type="checkbox" /><span>Dark</span></label>
         <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
           <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
@@ -84,6 +89,7 @@
       <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
       <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
       <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Savings Goals</button>
+      <button data-view="loans" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Loans</button>
     </section>
 
     <section id="view-overview" class="view space-y-6">
@@ -174,6 +180,31 @@
       <div id="goal-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
     </section>
 
+    
+    <section id="view-loans" class="view hidden space-y-4">
+      <div class="card p-4">
+        <h2 class="font-bold mb-3">Add Loan</h2>
+        <form id="loan-form" class="grid grid-cols-1 md:grid-cols-6 gap-2">
+          <input id="loan-date" type="date" class="px-2 py-1 border border-slate-300 rounded" required />
+          <input id="loan-party" type="text" placeholder="Person / Entity" class="px-2 py-1 border border-slate-300 rounded" required />
+          <select id="loan-type" class="px-2 py-1 border border-slate-300 rounded"><option value="given">Given</option><option value="taken">Taken</option></select>
+          <input id="loan-amount" type="number" min="0.01" step="0.01" placeholder="Amount" class="px-2 py-1 border border-slate-300 rounded" required />
+          <select id="loan-status" class="px-2 py-1 border border-slate-300 rounded"><option value="open">Open</option><option value="closed">Closed</option></select>
+          <button class="px-3 py-1 rounded btn-primary text-sm" type="submit">Save</button>
+        </form>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs text-slate-500 mb-2">Given = money you lent. Taken = money you borrowed.</div>
+        <div id="loan-summary" class="text-sm font-semibold mb-2"></div>
+        <div class="overflow-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-500"><th class="p-2">Date</th><th class="p-2">Party</th><th class="p-2">Type</th><th class="p-2">Status</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
+            <tbody id="loan-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section id="view-settings" class="view hidden space-y-4">
       <div class="card p-5">
         <h2 class="font-bold mb-1">Firebase Cloud Connection</h2>
@@ -244,6 +275,7 @@
       tx: [],
       goals: [],
       budgets: {},
+      loans: [],
       charts: {},
       currency: "USD"
     };
@@ -297,6 +329,7 @@
         tx: state.tx,
         goals: state.goals,
         budgets: state.budgets,
+        loans: state.loans,
         currency: state.currency,
         updatedAt: Date.now()
       };
@@ -306,6 +339,7 @@
       state.tx = Array.isArray(data.tx) ? data.tx : [];
       state.goals = Array.isArray(data.goals) ? data.goals : [];
       state.budgets = data.budgets && typeof data.budgets === "object" ? data.budgets : {};
+      state.loans = Array.isArray(data.loans) ? data.loans : [];
       state.currency = CURRENCY_OPTIONS.includes(data.currency) ? data.currency : "USD";
       $("currency-select").value = state.currency;
       rerenderAll();
@@ -335,7 +369,7 @@
     function applyTheme(theme) {
       const dark = theme === "dark";
       document.documentElement.classList.toggle("dark", dark);
-      $("dark-mode-toggle").textContent = dark ? "☀️ Light" : "🌙 Dark";
+      $("dark-mode-toggle").checked = dark;
       localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
     }
 
@@ -717,9 +751,19 @@
       renderTable();
       renderBudgets();
       renderGoals();
+      renderLoans();
       renderCharts();
       renderCloudIndicator();
       updateGateScreens();
+    }
+
+    function renderLoans() {
+      const rows = [...state.loans].sort((a,b)=>b.date.localeCompare(a.date));
+      const givenOpen = rows.filter(l=>l.type==="given" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
+      const takenOpen = rows.filter(l=>l.type==="taken" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
+      $("loan-summary").textContent = `Outstanding Given: ${money(givenOpen)} | Outstanding Taken: ${money(takenOpen)}`;
+      $("loan-table").innerHTML = rows.length ? rows.map((l)=>`<tr class="border-b border-slate-100"><td class="p-2">${l.date}</td><td class="p-2">${l.party}</td><td class="p-2 uppercase text-xs">${l.type}</td><td class="p-2">${l.status}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right"><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No loans added.</td></tr>`;
+      document.querySelectorAll("[data-loan-del]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; state.loans = state.loans.filter((l)=>l.id!==b.dataset.loanDel); await persistCloudData(); rerenderAll(); }));
     }
 
     function hookForms() {
@@ -776,10 +820,21 @@
         rerenderAll();
       });
 
+      $("loan-date").valueAsDate = new Date();
+      $("loan-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!requireCloudOrWarn()) return;
+        state.loans.push({ id: crypto.randomUUID(), date: $("loan-date").value, party: $("loan-party").value.trim(), type: $("loan-type").value, amount: Number($("loan-amount").value), status: $("loan-status").value, createdAt: Date.now() });
+        $("loan-party").value = "";
+        $("loan-amount").value = "";
+        await persistCloudData();
+        rerenderAll();
+      });
+
       $("tx-search").addEventListener("input", renderTable);
       $("tx-month").addEventListener("change", renderTable);
-      $("dark-mode-toggle").addEventListener("click", () => {
-        applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+      $("dark-mode-toggle").addEventListener("change", (e) => {
+        applyTheme(e.target.checked ? "dark" : "light");
       });
       $("currency-select").addEventListener("change", async (e) => {
         if (!requireCloudOrWarn()) {
@@ -846,6 +901,7 @@ const settingsSection = document.getElementById("view-settings");
     initCurrencyOptions();
     setTabs();
     initTheme();
+    $("dark-mode-toggle").checked = document.documentElement.classList.contains("dark");
     hookForms();
     renderCloudIndicator();
       updateGateScreens();
