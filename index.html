@@ -15,6 +15,12 @@
     body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
     .glass { background: rgba(255,255,255,.78); backdrop-filter: blur(8px); }
     .card { border: 1px solid rgb(226 232 240); border-radius: 1rem; box-shadow: 0 8px 20px rgba(15,23,42,.06); background: white; }
+    .theme-bg { background: linear-gradient(135deg, rgb(224 231 255), rgb(248 250 252), rgb(207 250 254)); }
+    :root.dark .theme-bg { background: linear-gradient(135deg, rgb(2 6 23), rgb(15 23 42), rgb(30 41 59)); }
+    .dark .text-slate-600,.dark .text-slate-500 { color: rgb(148 163 184) !important; }
+    .dark .bg-slate-50,.dark .bg-slate-100 { background-color: rgb(30 41 59) !important; }
+    .dark .border-slate-100,.dark .border-slate-200,.dark .border-slate-300 { border-color: rgb(71 85 105) !important; }
+    .dark input,.dark select,.dark textarea,.dark table thead { background-color: rgb(15 23 42) !important; color: rgb(226 232 240) !important; }
     :root.dark body { background: rgb(15 23 42); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
     .tab-active { background: rgb(15 23 42); color: white; }
@@ -25,12 +31,28 @@
     ::-webkit-scrollbar-track { background: #f8fafc; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
-  <div class="fixed inset-0 -z-10">
-    <div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-slate-50 to-cyan-100"></div>
-  </div>
+<body class="min-h-screen text-slate-800 transition-colors">
+  <div class="fixed inset-0 -z-10 theme-bg"></div>
 
-  <main class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+  <section id="setup-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="card w-full max-w-3xl p-6 md:p-8 space-y-4">
+      <h1 class="text-3xl font-bold">Connect your Firebase APIs first</h1><p class="text-slate-600">This app stays locked until your Firebase config is saved and a real cloud connection is confirmed.</p>
+      <div id="setup-connection-status" class="text-sm p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-700">Not connected yet.</div>
+      <div id="setup-form-anchor"></div>
+    </div>
+  </section>
+
+  <section id="login-screen" class="min-h-screen hidden flex items-center justify-center p-4">
+    <div class="card w-full max-w-2xl p-6 md:p-8 space-y-4">
+      <h2 class="text-2xl font-bold">Sign in to open FineLedger</h2><p class="text-slate-600">After cloud connection succeeds, sign in with Google to unlock your dashboard.</p>
+      <div class="flex flex-wrap gap-2">
+        <button id="gate-google-login" type="button" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-semibold">Sign in with Google</button>
+        <span id="login-gate-status" class="text-sm text-slate-600 self-center">Not signed in.</span>
+      </div>
+    </div>
+  </section>
+
+  <main id="app-shell" class="hidden max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
     <header class="card p-4 md:p-5 flex flex-wrap items-center justify-between gap-3 glass">
       <div>
         <h1 class="text-2xl font-bold">FineLedger Pro Dashboard</h1>
@@ -57,7 +79,6 @@
       <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
       <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
       <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Savings Goals</button>
-      <button data-view="settings" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Cloud Settings</button>
     </section>
 
     <section id="view-overview" class="view space-y-6">
@@ -350,6 +371,7 @@
       cloud.connected = false;
       cloud.workspaceId = "";
       renderCloudIndicator();
+      updateGateScreens();
     }
 
     async function connectCloud(config) {
@@ -370,23 +392,23 @@
 
       cloud.db = cloud.app.firestore();
       cloud.workspaceId = config.workspaceId;
-      if (!cloud.user) throw new Error("Sign in with Google before connecting cloud.");
-      cloud.docRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("users").doc(cloud.user.uid).collection("data").doc("ledger");
-
-      cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
-        cloud.syncing = true;
-        if (snap.exists) {
-          applyCloudPayload(snap.data() || {});
-        } else {
-          cloud.docRef.set(getCloudPayload(), { merge: true });
-        }
-        cloud.syncing = false;
-      }, (err) => {
-        $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
-      });
-
+      const pingRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("meta").doc("ping");
+      await pingRef.set({ updatedAt: Date.now() }, { merge: true });
       cloud.connected = true;
+
+      if (cloud.user) {
+        cloud.docRef = cloud.db.collection("fineledgerWorkspaces").doc(config.workspaceId).collection("users").doc(cloud.user.uid).collection("data").doc("ledger");
+        cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
+          cloud.syncing = true;
+          if (snap.exists) applyCloudPayload(snap.data() || {});
+          else cloud.docRef.set(getCloudPayload(), { merge: true });
+          cloud.syncing = false;
+        }, (err) => {
+          $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
+        });
+      }
       renderCloudIndicator();
+      updateGateScreens();
       $("firebase-settings-status").textContent = `Connected to Firestore workspace: ${config.workspaceId}`;
     }
 
@@ -406,6 +428,33 @@
       await disconnectCloud();
       const saved = readStoredFirebaseConfig();
       renderFirebaseForm(saved);
+    }
+
+    
+    function updateGateScreens() {
+      const setup = $("setup-screen");
+      const login = $("login-screen");
+      const app = $("app-shell");
+      const setupStatus = $("setup-connection-status");
+      if (cloud.connected) {
+        setup.classList.add("hidden");
+        setupStatus.textContent = `Connected to ${cloud.workspaceId}.`;
+
+        if (cloud.user) {
+          login.classList.add("hidden");
+          app.classList.remove("hidden");
+        } else {
+          login.classList.remove("hidden");
+          app.classList.add("hidden");
+        }
+      } else {
+        setup.classList.remove("hidden");
+
+        login.classList.add("hidden");
+        app.classList.add("hidden");
+        setupStatus.textContent = "Not connected yet.";
+      }
+      $("login-gate-status").textContent = cloud.user ? `Signed in: ${cloud.user.email}` : "Not signed in.";
     }
 
     function initCategoryOptions() {
@@ -434,6 +483,7 @@
       cloud.auth.onAuthStateChanged(async (user) => {
         cloud.user = user || null;
         renderAuthStatus();
+        updateGateScreens();
       });
     }
 
@@ -632,6 +682,7 @@
       renderGoals();
       renderCharts();
       renderCloudIndicator();
+      updateGateScreens();
     }
 
     function hookForms() {
@@ -732,6 +783,13 @@
         }
       });
       $("btn-google-logout").addEventListener("click", signOutGoogle);
+      $("gate-google-login").addEventListener("click", async () => {
+        try { 
+          await signInWithGoogle();
+          const saved = readStoredFirebaseConfig();
+          if (saved) await connectCloud(saved);
+        } catch (err) { $("firebase-settings-status").textContent = `Google sign-in failed: ${err.message}`; }
+      });
 
       $("btn-clear-cloud-settings").addEventListener("click", () => {
         clearStoredFirebaseConfig();
@@ -743,7 +801,6 @@
       const saved = readStoredFirebaseConfig();
       renderFirebaseForm(saved);
       if (!saved) {
-        document.querySelector('[data-view="settings"]').click();
         $("firebase-settings-status").textContent = "Add your Firebase APIs first to start.";
         return;
       }
@@ -755,13 +812,18 @@
       }
     }
 
+const settingsSection = document.getElementById("view-settings");
+    settingsSection.classList.remove("hidden", "view");
+    document.getElementById("setup-form-anchor").appendChild(settingsSection);
     initCategoryOptions();
     initCurrencyOptions();
     setTabs();
     initTheme();
     hookForms();
     renderCloudIndicator();
+      updateGateScreens();
     renderAuthStatus();
+        updateGateScreens();
     rerenderAll();
     bootstrapCloud();
   </script>
