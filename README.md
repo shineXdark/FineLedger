@@ -30,19 +30,35 @@ npx serve .
 ## Important notes
 
 - You must create/configure your Firebase project and Firestore rules.
-- Recommended strict Firestore rules for this app structure:
+- Recommended Firestore rules for this app structure (**copy/paste this exactly**):
 
 ```txt
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Workspace data is private per signed-in user.
-    match /fineledgerWorkspaces/{workspaceId}/users/{userId}/data/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // FineLedger writes exactly one document:
+    // /fineledgerWorkspaces/{workspaceId}/users/{uid}/data/ledger
+    match /fineledgerWorkspaces/{workspaceId}/users/{userId}/data/ledger {
+      allow get, create, update, delete: if isOwner(userId);
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
 ```
+
+- If your project also has a separate profile/account document, add a dedicated rule for that collection too (for example `match /users/{userId}` with `isOwner(userId)`), otherwise only the ledger path above will be writable.
 
 - If cloud is disconnected, or no Google account is signed in, the app blocks finance writes.
 - This build does **not** persist financial data locally.
