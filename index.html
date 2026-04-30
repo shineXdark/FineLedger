@@ -67,6 +67,12 @@
     .header-control { background: var(--surface-soft); border-color: var(--line) !important; }
     .header-control-label { color: var(--muted); }
     .header-select { background: var(--surface); border-color: var(--line) !important; color: var(--text); }
+    .header-select option { background: var(--surface); color: var(--text); }
+    .theme-muted { color: var(--muted) !important; }
+    .cloud-chip-warning { border-color: #fcd34d; background: #fffbeb; color: #b45309; }
+    .cloud-chip-active { border-color: #6ee7b7; background: #ecfdf5; color: #047857; box-shadow: 0 1px 0 rgba(0,0,0,.02); }
+    :root.dark .cloud-chip-warning { border-color: #7c5c1f; background: #2f2611; color: #fcd34d; }
+    :root.dark .cloud-chip-active { border-color: #2f6a54; background: #0f2f25; color: #86efac; box-shadow: none; }
     .modal-backdrop { backdrop-filter: blur(8px); background: rgb(15 23 42 / 0.45); }
     .help-modal { max-height: min(85vh, 720px); overflow-y: auto; }
     .kpi-value { white-space: nowrap; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -78,7 +84,7 @@
 
   <section id="setup-screen" class="min-h-screen flex items-center justify-center p-4">
     <div class="card w-full max-w-3xl p-6 md:p-8 space-y-4">
-      <h1 class="text-3xl font-bold">Connect your Firebase APIs first</h1><p class="text-slate-600">This app stays locked until your Firebase config is saved and a real cloud connection is confirmed.</p>
+      <h1 class="text-3xl font-bold">Connect your Firebase APIs first</h1><p class="theme-muted">This app stays locked until your Firebase config is saved and a real cloud connection is confirmed.</p>
       <div id="setup-connection-status" class="text-sm p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-700">Not connected yet.</div>
       <div class="flex flex-wrap gap-2">
         <button id="btn-cloud-help" type="button" class="px-4 py-2 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-800 font-semibold">How to set up cloud (step-by-step)</button>
@@ -89,10 +95,10 @@
 
   <section id="login-screen" class="min-h-screen hidden flex items-center justify-center p-4">
     <div class="card w-full max-w-2xl p-6 md:p-8 space-y-4">
-      <h2 class="text-2xl font-bold">Sign in to open FineLedger</h2><p class="text-slate-600">After cloud connection succeeds, sign in with Google to unlock your dashboard.</p>
+      <h2 class="text-2xl font-bold">Sign in to open FineLedger</h2><p class="theme-muted">After cloud connection succeeds, sign in with Google to unlock your dashboard.</p>
       <div class="flex flex-wrap gap-2">
         <button id="gate-google-login" type="button" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-semibold">Sign in with Google</button>
-        <span id="login-gate-status" class="text-sm text-slate-600 self-center">Not signed in.</span>
+        <span id="login-gate-status" class="text-sm theme-muted self-center">Not signed in.</span>
       </div>
     </div>
   </section>
@@ -101,7 +107,7 @@
     <header class="card p-3 md:p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">FineLedger Control Center</h1>
-        <p class="text-xs text-slate-600 mt-1">Modern operations-first finance workspace.</p>
+        <p class="text-xs theme-muted mt-1">Modern operations-first finance workspace.</p>
       </div>
       <div class="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
         <label class="switch"><span>Light</span><input id="dark-mode-toggle" type="checkbox" /><span>Dark</span></label>
@@ -110,7 +116,7 @@
           <select id="currency-select" class="header-select text-sm border rounded-md px-2 py-1"></select>
         </div>
         <div class="relative">
-          <button id="cloud-indicator" type="button" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto">
+          <button id="cloud-indicator" type="button" class="text-sm border rounded-lg px-3 py-2 font-semibold cloud-chip-warning text-center sm:text-left w-full sm:w-auto">
             ☁️ Not connected to cloud
           </button>
           <div id="cloud-menu" class="hidden absolute right-0 mt-2 w-56 card p-2 z-20">
@@ -127,7 +133,7 @@
 
     <div class="app-layout">
       <aside class="side-nav">
-        <div class="text-xs uppercase tracking-[0.18em] text-slate-200 mb-3">Workspace</div>
+        <div class="text-xs uppercase tracking-[0.18em] text-white mb-3">Workspace</div>
         <button data-view="overview" class="tab-btn side-link active">Dashboard</button>
         <button data-view="transactions" class="tab-btn side-link">Transactions</button>
         <button data-view="budgets" class="tab-btn side-link">Budgets</button>
@@ -446,19 +452,19 @@
       const status = $("data-status");
       if (cloud.connected && cloud.user) {
         indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 text-center sm:text-left w-full sm:w-auto shadow-sm ring-1 ring-emerald-200";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold cloud-chip-active text-center sm:text-left w-full sm:w-auto";
         status.className = "hidden";
         status.textContent = "";
       } else if (cloud.connected && !cloud.user) {
         status.classList.remove("hidden");
         indicator.textContent = "☁️ Connected - sign in required";
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold cloud-chip-warning text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
         status.innerHTML = "Firebase is connected, but you must sign in with Google before personal data is loaded or saved.";
       } else {
         status.classList.remove("hidden");
         indicator.textContent = "☁️ Not connected to cloud";
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold cloud-chip-warning text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
         status.innerHTML = "Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.";
       }
