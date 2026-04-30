@@ -638,13 +638,65 @@
     }
 
     function monthKey(d) { return d.slice(0, 7); }
+    function yearKey(d) { return d.slice(0, 4); }
+
+    function weekRangeFromDate(dateStr) {
+      const date = new Date(`${dateStr}T00:00:00`);
+      const day = date.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() + mondayOffset);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      return {
+        start: weekStart.toISOString().slice(0, 10),
+        end: weekEnd.toISOString().slice(0, 10),
+      };
+    }
 
     function renderMonthFilter() {
-      const months = [...new Set(state.tx.map((t) => monthKey(t.date)))].sort().reverse();
       const select = $("tx-month");
-      const current = select.value;
-      select.innerHTML = `<option value="all">All months</option>` + months.map((m) => `<option value="${m}">${m}</option>`).join("");
-      if (months.includes(current)) select.value = current;
+      const previous = select.value;
+      const now = new Date();
+      const currentMonth = now.toISOString().slice(0, 7);
+      const currentYear = String(now.getFullYear());
+
+      const months = [...new Set(state.tx.map((t) => monthKey(t.date)))].sort().reverse();
+      const years = [...new Set(state.tx.map((t) => yearKey(t.date)))].sort().reverse();
+
+      const options = [];
+
+      const currentMonthTx = state.tx.filter((t) => monthKey(t.date) === currentMonth);
+      if (currentMonthTx.length) {
+        const weeks = [...new Map(currentMonthTx.map((t) => {
+          const range = weekRangeFromDate(t.date);
+          return [range.start, range];
+        })).values()].sort((a, b) => b.start.localeCompare(a.start));
+
+        for (const range of weeks) {
+          options.push({
+            value: `week:${range.start}:${range.end}`,
+            label: `Week ${range.start} to ${range.end}`,
+          });
+        }
+      }
+
+      const yearMonths = months.filter((m) => m.startsWith(`${currentYear}-`));
+      for (const m of yearMonths) options.push({ value: `month:${m}`, label: `Month ${m}` });
+
+      for (const y of years) options.push({ value: `year:${y}`, label: `Year ${y}` });
+
+      select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
+
+      if (options.some((o) => o.value === previous)) {
+        select.value = previous;
+      } else {
+        const defaultMonth = `month:${currentMonth}`;
+        const defaultYear = `year:${currentYear}`;
+        if (options.some((o) => o.value === defaultMonth)) select.value = defaultMonth;
+        else if (options.some((o) => o.value === defaultYear)) select.value = defaultYear;
+        else if (options.length) select.value = options[0].value;
+      }
     }
 
     function computeOverview() {
@@ -672,9 +724,20 @@
 
     function renderTable() {
       const q = $("tx-search").value.toLowerCase().trim();
-      const m = $("tx-month").value;
+      const period = $("tx-month").value;
       let rows = [...state.tx].sort((a,b) => b.date.localeCompare(a.date));
-      if (m !== "all") rows = rows.filter((r) => monthKey(r.date) === m);
+      if (period) {
+        if (period.startsWith("week:")) {
+          const [, start, end] = period.split(":");
+          rows = rows.filter((r) => r.date >= start && r.date <= end);
+        } else if (period.startsWith("month:")) {
+          const month = period.slice(6);
+          rows = rows.filter((r) => monthKey(r.date) === month);
+        } else if (period.startsWith("year:")) {
+          const year = period.slice(5);
+          rows = rows.filter((r) => yearKey(r.date) === year);
+        }
+      }
       if (q) rows = rows.filter((r) => r.desc.toLowerCase().includes(q));
       $("tx-table").innerHTML = rows.length ? rows.map((t) => `
         <tr class="border-b border-slate-100 hover:bg-slate-50">
