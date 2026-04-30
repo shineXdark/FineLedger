@@ -425,14 +425,16 @@
       if (cloud.connected && cloud.user) {
         indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 text-center sm:text-left w-full sm:w-auto shadow-sm ring-1 ring-emerald-200";
-        status.className = "card p-3 text-sm border-emerald-300 bg-emerald-50 text-emerald-800";
-        status.textContent = "Connected to cloud.";
+        status.className = "hidden";
+        status.textContent = "";
       } else if (cloud.connected && !cloud.user) {
+        status.classList.remove("hidden");
         indicator.textContent = "☁️ Connected - sign in required";
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
         status.innerHTML = "Firebase is connected, but you must sign in with Google before personal data is loaded or saved.";
       } else {
+        status.classList.remove("hidden");
         indicator.textContent = "☁️ Not connected to cloud";
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
