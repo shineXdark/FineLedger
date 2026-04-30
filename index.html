@@ -59,6 +59,15 @@
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     ::-webkit-scrollbar-track { background: #f8fafc; }
+    .mobile-scroll-tabs { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .mobile-scroll-tabs::-webkit-scrollbar { height: 5px; }
+    @media (max-width: 767px) {
+      .card { border-radius: .8rem; }
+      header.card h1 { font-size: 1.3rem; line-height: 1.3; }
+      .kpi-value { font-size: 1.55rem; line-height: 1.25; }
+      input, select, textarea, button { font-size: 16px; }
+      .compact-mobile-table th, .compact-mobile-table td { padding: .45rem .4rem; font-size: .8rem; }
+    }
   </style>
 </head>
 <body class="min-h-screen text-slate-800 transition-colors">
@@ -86,18 +95,18 @@
   </section>
 
   <main id="app-shell" class="hidden max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-    <header class="card p-3 md:p-4 flex flex-wrap items-center justify-between gap-3">
+    <header class="card p-3 md:p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">FineLedger Dashboard</h1>
         <p class="text-xs text-slate-600 mt-1">Compact cloud finance tracker.</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
         <label class="switch"><span>Light</span><input id="dark-mode-toggle" type="checkbox" /><span>Dark</span></label>
-        <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+        <div class="flex items-center justify-between gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
           <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
         </div>
-        <div id="cloud-indicator" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700">
+        <div id="cloud-indicator" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left">
           ☁️ Not connected to cloud
         </div>
       </div>
@@ -107,7 +116,7 @@
       Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.
     </div>
 
-    <section class="card p-3 md:p-4 flex flex-wrap gap-2 bg-white/70" id="tabs">
+    <section class="card p-3 md:p-4 flex gap-2 bg-white/70 overflow-x-auto whitespace-nowrap mobile-scroll-tabs" id="tabs">
       <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
       <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
       <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
@@ -117,11 +126,11 @@
 
     <section id="view-overview" class="view space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Net Balance</p><p id="kpi-balance" class="text-2xl font-bold mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Income (Month)</p><p id="kpi-income" class="text-2xl font-bold text-emerald-600 mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Expenses (Month)</p><p id="kpi-expense" class="text-2xl font-bold text-rose-600 mt-2">$0</p></article>
-        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Savings Rate</p><p id="kpi-savings" class="text-2xl font-bold text-indigo-600 mt-2">0%</p></article>
-        <article class="card p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Budget Health</p><p id="kpi-health" class="text-2xl font-bold text-cyan-700 mt-2">Healthy</p></article>
+        <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Net Balance</p><p id="kpi-balance" class="text-2xl font-bold mt-2 kpi-value">$0</p></article>
+        <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Income (Month)</p><p id="kpi-income" class="text-2xl font-bold text-emerald-600 mt-2 kpi-value">$0</p></article>
+        <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Expenses (Month)</p><p id="kpi-expense" class="text-2xl font-bold text-rose-600 mt-2 kpi-value">$0</p></article>
+        <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Savings Rate</p><p id="kpi-savings" class="text-2xl font-bold text-indigo-600 mt-2 kpi-value">0%</p></article>
+        <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Budget Health</p><p id="kpi-health" class="text-2xl font-bold text-cyan-700 mt-2 kpi-value">Healthy</p></article>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -153,20 +162,20 @@
             <option value="income">Income</option>
           </select>
           <input id="tx-amount" type="number" min="0.01" step="0.01" placeholder="Amount" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg" required />
-          <button class="md:col-span-1 px-3 py-2 rounded-lg btn-primary" type="submit">Save</button>
+          <button class="md:col-span-1 px-3 py-2 rounded-lg btn-primary font-semibold" type="submit">Save</button>
         </form>
       </div>
 
       <div class="card p-4">
         <div class="flex flex-wrap gap-2 items-center justify-between">
           <h2 class="font-bold">Ledger</h2>
-          <div class="flex gap-2">
-            <input id="tx-search" placeholder="Search description" class="px-3 py-2 text-sm border border-slate-300 rounded-lg" />
+          <div class="flex w-full sm:w-auto gap-2">
+            <input id="tx-search" placeholder="Search description" class="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg" />
             <select id="tx-month" class="px-3 py-2 text-sm border border-slate-300 rounded-lg"><option value="all">All months</option></select>
           </div>
         </div>
         <div class="overflow-auto mt-3 max-h-[420px]">
-          <table class="w-full text-sm">
+          <table class="w-full text-sm compact-mobile-table">
             <thead class="sticky top-0 bg-slate-50">
               <tr class="text-left text-slate-500">
                 <th class="p-2">Date</th><th class="p-2">Description</th><th class="p-2">Category</th><th class="p-2 text-right">Amount</th><th class="p-2">Type</th><th class="p-2 text-right">Action</th>
@@ -221,14 +230,14 @@
         <div id="loan-summary" class="text-sm font-semibold mb-2"></div>
         <h3 class="font-semibold mb-2">Pending Loans</h3>
         <div class="overflow-auto">
-          <table class="w-full text-sm">
+          <table class="w-full text-sm compact-mobile-table">
             <thead><tr class="text-left text-slate-500"><th class="p-2">Date</th><th class="p-2">Party</th><th class="p-2">Type</th><th class="p-2">Status</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
             <tbody id="loan-pending-table"></tbody>
           </table>
         </div>
         <h3 class="font-semibold mb-2 mt-4">Closed Loans</h3>
         <div class="overflow-auto">
-          <table class="w-full text-sm">
+          <table class="w-full text-sm compact-mobile-table">
             <thead><tr class="text-left text-slate-500"><th class="p-2">Date</th><th class="p-2">Party</th><th class="p-2">Type</th><th class="p-2">Status</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Action</th></tr></thead>
             <tbody id="loan-closed-table"></tbody>
           </table>
