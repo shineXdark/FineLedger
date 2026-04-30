@@ -64,6 +64,9 @@
     .switch input:checked{background:var(--brand)}
     .switch input:checked::after{transform:translateX(1rem)}
     input,select,textarea{background:var(--surface);color:var(--text);border-color:var(--line)!important}
+    .header-control { background: var(--surface-soft); border-color: var(--line) !important; }
+    .header-control-label { color: var(--muted); }
+    .header-select { background: var(--surface); border-color: var(--line) !important; color: var(--text); }
     .modal-backdrop { backdrop-filter: blur(8px); background: rgb(15 23 42 / 0.45); }
     .help-modal { max-height: min(85vh, 720px); overflow-y: auto; }
     .kpi-value { white-space: nowrap; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -102,9 +105,9 @@
       </div>
       <div class="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
         <label class="switch"><span>Light</span><input id="dark-mode-toggle" type="checkbox" /><span>Dark</span></label>
-        <div class="flex items-center justify-between gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-          <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
-          <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
+        <div class="header-control flex items-center justify-between gap-2 border rounded-lg px-3 py-2">
+          <span class="header-control-label text-xs uppercase tracking-wide">Currency</span>
+          <select id="currency-select" class="header-select text-sm border rounded-md px-2 py-1"></select>
         </div>
         <div class="relative">
           <button id="cloud-indicator" type="button" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto">
