@@ -66,10 +66,11 @@
     input,select,textarea{background:var(--surface);color:var(--text);border-color:var(--line)!important}
     .modal-backdrop { backdrop-filter: blur(8px); background: rgb(15 23 42 / 0.45); }
     .help-modal { max-height: min(85vh, 720px); overflow-y: auto; }
+    .kpi-value { white-space: nowrap; line-height: 1.15; font-variant-numeric: tabular-nums; }
     @media (max-width: 1023px) { .app-layout { grid-template-columns: 1fr; } .side-nav { position: static; } }
   </style>
 </head>
-<body class="min-h-screen text-slate-800 transition-colors">
+<body class="min-h-screen transition-colors">
   <div class="fixed inset-0 -z-10 theme-bg"></div>
 
   <section id="setup-screen" class="min-h-screen flex items-center justify-center p-4">
@@ -93,7 +94,7 @@
     </div>
   </section>
 
-  <main id="app-shell" class="hidden max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+  <main id="app-shell" class="hidden w-full p-4 md:p-6 lg:p-8 space-y-6">
     <header class="card p-3 md:p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">FineLedger Control Center</h1>
@@ -123,7 +124,7 @@
 
     <div class="app-layout">
       <aside class="side-nav">
-        <div class="text-xs uppercase tracking-[0.18em] text-slate-400 mb-3">Workspace</div>
+        <div class="text-xs uppercase tracking-[0.18em] text-slate-200 mb-3">Workspace</div>
         <button data-view="overview" class="tab-btn side-link active">Dashboard</button>
         <button data-view="transactions" class="tab-btn side-link">Transactions</button>
         <button data-view="budgets" class="tab-btn side-link">Budgets</button>
@@ -137,7 +138,7 @@
       </aside>
       <div class="space-y-4">
         <section class="topbar">
-          <div class="font-semibold text-slate-800">Operations Overview</div>
+          <div class="font-semibold" style="color:var(--text)">Operations Overview</div>
           <div class="flex flex-wrap gap-2"><span class="topbar-chip">Live Cloud Sync</span><span class="topbar-chip">Finance Ops</span></div>
         </section>
         <section id="tabs" class="hidden"></section>
