@@ -16,6 +16,15 @@
     
     
     .card { border: 1px solid var(--line); border-radius: .65rem; box-shadow:none; background: var(--card); }
+    .coming-soon { color: #dc2626; font-style: italic; font-size: .72rem; margin-top: .2rem; }
+    .app-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1rem; align-items: start; }
+    .side-nav { position: sticky; top: 1rem; background: #0f172a; color: #e2e8f0; border-radius: .9rem; padding: 1rem; border: 1px solid #1e293b; }
+    .side-link { display:block; width:100%; text-align:left; border-radius:.6rem; padding:.55rem .75rem; font-size:.9rem; color:#cbd5e1; }
+    .side-link:hover { background:#1e293b; color:#fff; }
+    .side-link.active { background:#334155; color:#fff; }
+    .topbar { background: #fff; border: 1px solid var(--line); border-radius: .85rem; padding: .8rem 1rem; display:flex; justify-content:space-between; align-items:center; gap: .8rem; }
+    .topbar-chip { font-size:.75rem; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:999px; padding:.25rem .6rem; }
+    .overview-banner { background: linear-gradient(130deg, #0f172a, #1d4ed8); color:#fff; border-radius: .85rem; padding: 1rem; }
     .theme-bg { background: var(--bg); }
     :root.dark .theme-bg { background: linear-gradient(135deg, rgb(2 6 23), rgb(15 23 42), rgb(30 41 59)); }
     .dark .text-slate-600,.dark .text-slate-500 { color: rgb(203 213 225) !important; }
@@ -61,6 +70,7 @@
     ::-webkit-scrollbar-track { background: #f8fafc; }
     .mobile-scroll-tabs { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
     .mobile-scroll-tabs::-webkit-scrollbar { height: 5px; }
+    @media (max-width: 1023px) { .app-layout { grid-template-columns: 1fr; } .side-nav { position: static; } }
     @media (max-width: 767px) {
       .card { border-radius: .8rem; }
       header.card h1 { font-size: 1.3rem; line-height: 1.3; }
@@ -122,15 +132,32 @@
       Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.
     </div>
 
-    <section class="card p-3 md:p-4 flex gap-2 bg-white/70 overflow-x-auto whitespace-nowrap mobile-scroll-tabs" id="tabs">
-      <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
-      <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
-      <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
-      <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Savings Goals</button>
-      <button data-view="loans" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Loans</button>
-    </section>
-
+    <div class="app-layout">
+      <aside class="side-nav">
+        <div class="text-xs uppercase tracking-[0.18em] text-slate-400 mb-3">Flowdash-style</div>
+        <button data-view="overview" class="tab-btn side-link active">Dashboard</button>
+        <button data-view="transactions" class="tab-btn side-link">Transactions</button>
+        <button data-view="budgets" class="tab-btn side-link">Budgets</button>
+        <button data-view="goals" class="tab-btn side-link">Savings Goals</button>
+        <button data-view="loans" class="tab-btn side-link">Loans</button>
+        <button data-view="settings" class="tab-btn side-link">Cloud Settings</button>
+        <div class="mt-5 pt-4 border-t border-slate-700">
+          <div class="text-xs text-slate-300">Team Chat</div>
+          <div class="coming-soon">Coming Soon</div>
+        </div>
+      </aside>
+      <div class="space-y-4">
+        <section class="topbar">
+          <div class="font-semibold text-slate-800">Mini Staff Dashboard</div>
+          <div class="flex flex-wrap gap-2"><span class="topbar-chip">Live Cloud Sync</span><span class="topbar-chip">Finance Ops</span></div>
+        </section>
+        <section id="tabs" class="hidden"></section>
     <section id="view-overview" class="view space-y-6">
+      <div class="overview-banner">
+        <div class="text-sm opacity-90">Welcome back</div>
+        <div class="text-2xl font-bold">Your financial command center</div>
+        <div class="coming-soon">Activity Timeline Widget - Coming Soon</div>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Net Balance</p><p id="kpi-balance" class="text-2xl font-bold mt-2 kpi-value">$0</p></article>
         <article class="card p-4 sm:p-5"><p class="text-xs uppercase tracking-wider text-slate-500">Income (Month)</p><p id="kpi-income" class="text-2xl font-bold text-emerald-600 mt-2 kpi-value">$0</p></article>
@@ -300,6 +327,8 @@
         <p id="firebase-settings-status" class="mt-3 text-sm text-slate-600">No Firebase config saved yet.</p>
       </div>
     </section>
+      </div>
+    </div>
   </main>
 
   <div id="cloud-help-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
