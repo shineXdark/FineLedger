@@ -28,6 +28,10 @@
 :root.dark .text-amber-800 { color: rgb(254 243 199) !important; }
 :root.dark .bg-amber-50 { background-color: rgb(69 26 3 / 0.5) !important; }
 :root.dark .border-amber-300 { border-color: rgb(180 83 9) !important; }
+:root.dark .text-sky-700 { color: rgb(125 211 252) !important; }
+:root.dark .text-rose-700,.dark .text-rose-600 { color: rgb(251 113 133) !important; }
+:root.dark .hover\:text-rose-800:hover { color: rgb(255 228 230) !important; }
+:root.dark .tab-btn:not(.tab-active) { color: rgb(226 232 240) !important; }
 :root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
     .tab-active { background: var(--primary); color: white; }
@@ -602,13 +606,16 @@
       const exp = monthTx.filter((t) => t.type === "expense").reduce((a, b) => a + Number(b.amount), 0);
       const allInc = state.tx.filter((t) => t.type === "income").reduce((a, b) => a + Number(b.amount), 0);
       const allExp = state.tx.filter((t) => t.type === "expense").reduce((a, b) => a + Number(b.amount), 0);
+      const openLoans = state.loans.filter((l) => l.status === "open");
+      const openGiven = openLoans.filter((l) => l.type === "given").reduce((sum, l) => sum + Number(l.amount), 0);
+      const openTaken = openLoans.filter((l) => l.type === "taken").reduce((sum, l) => sum + Number(l.amount), 0);
       const savingsRate = inc > 0 ? ((inc - exp) / inc) * 100 : 0;
       const budgetUsedRatio = Object.entries(state.budgets).reduce((acc, [cat, lim]) => {
         const spent = monthTx.filter((t) => t.type === "expense" && t.category === cat).reduce((s, t) => s + Number(t.amount), 0);
         return acc + (lim > 0 ? spent / lim : 0);
       }, 0) / Math.max(Object.keys(state.budgets).length, 1);
 
-      $("kpi-balance").textContent = money(allInc - allExp);
+      $("kpi-balance").textContent = money((allInc - allExp) + openGiven - openTaken);
       $("kpi-income").textContent = money(inc);
       $("kpi-expense").textContent = money(exp);
       $("kpi-savings").textContent = `${savingsRate.toFixed(1)}%`;
