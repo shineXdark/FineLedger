@@ -106,8 +106,14 @@
           <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
           <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
         </div>
-        <div id="cloud-indicator" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left">
-          ☁️ Not connected to cloud
+        <div class="relative">
+          <button id="cloud-indicator" type="button" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto">
+            ☁️ Not connected to cloud
+          </button>
+          <div id="cloud-menu" class="hidden absolute right-0 mt-2 w-56 card p-2 z-20">
+            <button id="cloud-switch-account" type="button" class="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-slate-100">Switch Google account</button>
+            <button id="cloud-logout" type="button" class="w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50">Sign out and restart</button>
+          </div>
         </div>
       </div>
     </header>
@@ -135,7 +141,10 @@
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div class="card p-5 xl:col-span-2">
-          <h2 class="font-bold mb-4">Monthly Cashflow Trend</h2>
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="font-bold">Monthly Cashflow Trend</h2>
+            <select id="overview-month" class="px-3 py-2 text-sm border border-slate-300 rounded-lg min-w-[9rem]" aria-label="Overview period filter"></select>
+          </div>
           <div class="h-[320px]"><canvas id="chart-cashflow"></canvas></div>
         </div>
         <div class="card p-5">
@@ -144,9 +153,8 @@
         </div>
       </div>
 
-      <div class="card p-5 text-sm text-slate-600">
-        <p class="font-semibold text-slate-800">Cloud-only mode is active in this build.</p>
-        <p class="mt-1">No transaction, budget, or goal data is written to browser localStorage. Financial records are synced to your configured Firebase Firestore database only.</p>
+      <div class="card p-3 text-xs text-slate-500">
+        Cloud-only mode: data syncs to Firestore only.
       </div>
     </section>
 
@@ -171,7 +179,7 @@
           <h2 class="font-bold">Ledger</h2>
           <div class="flex w-full sm:w-auto gap-2">
             <input id="tx-search" placeholder="Search description" class="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg" />
-            <select id="tx-month" class="px-3 py-2 text-sm border border-slate-300 rounded-lg"><option value="all">All months</option></select>
+            <select id="tx-month" class="px-3 py-2 text-sm border border-slate-300 rounded-lg" aria-label="Transaction period filter"></select>
           </div>
         </div>
         <div class="overflow-auto mt-3 max-h-[420px]">
@@ -416,17 +424,17 @@
       const status = $("data-status");
       if (cloud.connected && cloud.user) {
         indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 text-center sm:text-left w-full sm:w-auto shadow-sm ring-1 ring-emerald-200";
         status.className = "card p-3 text-sm border-emerald-300 bg-emerald-50 text-emerald-800";
-        status.innerHTML = "Cloud mode connected. Financial data is synced to Firestore only (no local ledger persistence).";
+        status.textContent = "Connected to cloud.";
       } else if (cloud.connected && !cloud.user) {
         indicator.textContent = "☁️ Connected - sign in required";
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
         status.innerHTML = "Firebase is connected, but you must sign in with Google before personal data is loaded or saved.";
       } else {
         indicator.textContent = "☁️ Not connected to cloud";
-        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto";
         status.className = "card p-3 text-sm border-amber-300 bg-amber-50 text-amber-800";
         status.innerHTML = "Cloud sync is required. Open <strong>Cloud Settings</strong>, paste your Firebase config, and connect before adding transactions.";
       }
@@ -572,7 +580,34 @@
       renderFirebaseForm(null);
     }
 
-    
+    async function switchGoogleAccount() {
+      if (!cloud.auth) return;
+      await cloud.auth.signOut();
+      await signInWithGoogle();
+    }
+
+    async function logoutAndRestart() {
+      await signOutGoogle();
+      window.location.reload();
+    }
+
+    function setCloudMenu() {
+      const indicator = $("cloud-indicator");
+      const menu = $("cloud-menu");
+      indicator.addEventListener("click", () => {
+        if (!cloud.connected || !cloud.user) return;
+        menu.classList.toggle("hidden");
+      });
+      document.addEventListener("click", (e) => {
+        if (!menu.contains(e.target) && !indicator.contains(e.target)) menu.classList.add("hidden");
+      });
+      $("cloud-switch-account").addEventListener("click", async () => {
+        menu.classList.add("hidden");
+        try { await switchGoogleAccount(); } catch (err) { $("firebase-settings-status").textContent = `Google account switch failed: ${err.message}`; }
+      });
+      $("cloud-logout").addEventListener("click", logoutAndRestart);
+    }
+
     function updateGateScreens() {
       const setup = $("setup-screen");
       const login = $("login-screen");
@@ -655,8 +690,8 @@
     }
 
     function renderMonthFilter() {
-      const select = $("tx-month");
-      const previous = select.value;
+      const selects = [$("tx-month"), $("overview-month")].filter(Boolean);
+      const previous = selects.find((s) => s.value)?.value || "";
       const now = new Date();
       const currentMonth = now.toISOString().slice(0, 7);
       const currentYear = String(now.getFullYear());
@@ -664,7 +699,7 @@
       const months = [...new Set(state.tx.map((t) => monthKey(t.date)))].sort().reverse();
       const years = [...new Set(state.tx.map((t) => yearKey(t.date)))].sort().reverse();
 
-      const options = [];
+      const options = [{ value: `month:${currentMonth}`, label: "Month" }];
 
       const currentMonthTx = state.tx.filter((t) => monthKey(t.date) === currentMonth);
       if (currentMonthTx.length) {
@@ -681,22 +716,16 @@
         }
       }
 
-      const yearMonths = months.filter((m) => m.startsWith(`${currentYear}-`));
-      for (const m of yearMonths) options.push({ value: `month:${m}`, label: `Month ${m}` });
-
+      const monthOptions = months.filter((m) => m !== currentMonth).map((m) => ({ value: `month:${m}`, label: `Month ${m}` }));
+      options.push(...monthOptions);
       for (const y of years) options.push({ value: `year:${y}`, label: `Year ${y}` });
 
-      select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
-
-      if (options.some((o) => o.value === previous)) {
-        select.value = previous;
-      } else {
-        const defaultMonth = `month:${currentMonth}`;
-        const defaultYear = `year:${currentYear}`;
-        if (options.some((o) => o.value === defaultMonth)) select.value = defaultMonth;
-        else if (options.some((o) => o.value === defaultYear)) select.value = defaultYear;
-        else if (options.length) select.value = options[0].value;
+      for (const select of selects) {
+        select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
       }
+
+      const nextValue = options.some((o) => o.value === previous) ? previous : `month:${currentMonth}`;
+      for (const select of selects) select.value = nextValue;
     }
 
     function computeOverview() {
@@ -849,8 +878,13 @@
 
     function renderCharts() {
       const series = getCashflowSeries();
+      const period = $("overview-month")?.value || `month:${new Date().toISOString().slice(0, 7)}`;
+      let filtered = [...state.tx];
+      if (period.startsWith("week:")) { const [, start, end] = period.split(":"); filtered = filtered.filter((r) => r.date >= start && r.date <= end); }
+      else if (period.startsWith("month:")) { const month = period.slice(6); filtered = filtered.filter((r) => monthKey(r.date) === month); }
+      else if (period.startsWith("year:")) { const year = period.slice(5); filtered = filtered.filter((r) => yearKey(r.date) === year); }
       const expenseCats = {};
-      for (const t of state.tx.filter((t) => t.type === "expense")) expenseCats[t.category] = (expenseCats[t.category] ?? 0) + Number(t.amount);
+      for (const t of filtered.filter((t) => t.type === "expense")) expenseCats[t.category] = (expenseCats[t.category] ?? 0) + Number(t.amount);
 
       if (state.charts.cash) state.charts.cash.destroy();
       if (state.charts.cat) state.charts.cat.destroy();
@@ -860,20 +894,32 @@
         data: {
           labels: series.labels.length ? series.labels : ["No data"],
           datasets: [
-            { label: "Income", backgroundColor: "#10b981", data: series.income.length ? series.income : [0] },
-            { label: "Expense", backgroundColor: "#f43f5e", data: series.expense.length ? series.expense : [0] }
+            { label: "Income", backgroundColor: "rgba(16,185,129,0.82)", borderColor: "#059669", borderWidth: 1, borderRadius: 8, maxBarThickness: 34, data: series.income.length ? series.income : [0] },
+            { label: "Expense", backgroundColor: "rgba(244,63,94,0.82)", borderColor: "#e11d48", borderWidth: 1, borderRadius: 8, maxBarThickness: 34, data: series.expense.length ? series.expense : [0] }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "rectRounded", padding: 14 } },
+            tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8 }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: "#64748b" } },
+            y: { grid: { color: "rgba(148,163,184,0.2)" }, ticks: { color: "#64748b" }, beginAtZero: true }
+          }
+        }
       });
 
       state.charts.cat = new Chart($("chart-categories"), {
         type: "doughnut",
         data: {
           labels: Object.keys(expenseCats).length ? Object.keys(expenseCats) : ["No data"],
-          datasets: [{ data: Object.values(expenseCats).length ? Object.values(expenseCats) : [1], backgroundColor: ["#4f46e5", "#0ea5e9", "#14b8a6", "#eab308", "#f97316", "#ef4444", "#8b5cf6", "#64748b"] }]
+          datasets: [{ data: Object.values(expenseCats).length ? Object.values(expenseCats) : [1], backgroundColor: ["#1d4ed8", "#0f766e", "#7c3aed", "#c2410c", "#be185d", "#0369a1", "#4d7c0f", "#475569"], borderColor: "#ffffff", borderWidth: 2, hoverOffset: 10 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "62%" }
+        options: { responsive: true, maintainAspectRatio: false, cutout: "58%", plugins: { legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "circle", padding: 16 } } } }
       });
     }
 
@@ -969,7 +1015,8 @@
       });
 
       $("tx-search").addEventListener("input", renderTable);
-      $("tx-month").addEventListener("change", renderTable);
+      $("tx-month").addEventListener("change", () => { $("overview-month").value = $("tx-month").value; renderTable(); renderCharts(); });
+      $("overview-month").addEventListener("change", () => { $("tx-month").value = $("overview-month").value; renderTable(); renderCharts(); });
       $("dark-mode-toggle").addEventListener("change", (e) => {
         applyTheme(e.target.checked ? "dark" : "light");
       });
@@ -1055,6 +1102,7 @@ const settingsSection = document.getElementById("view-settings");
     initTheme();
     $("dark-mode-toggle").checked = document.documentElement.classList.contains("dark");
     hookForms();
+    setCloudMenu();
     renderCloudIndicator();
       updateGateScreens();
     renderAuthStatus();
