@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>FineLedger</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com" integrity="sha384-iQn6fvh8g2sL1SL5mOk8A8YxM6U8R8w3QdR4fE7dE3rSl7f6LgOw1w5ifw7x5JQ5" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-Z9K9Q8eR8f8J7OqG1k4mWvWl8yQ1iVhQkQj9xZp2k9r1j3mQj2v2Yx8s2r6n4qA7" crossorigin="anonymous"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -163,7 +164,7 @@
         <h2 class="font-bold mb-4">Add Transaction</h2>
         <form id="tx-form" class="grid grid-cols-1 md:grid-cols-7 gap-3">
           <input id="tx-date" type="date" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg" required />
-          <input id="tx-desc" type="text" placeholder="Description" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
+          <input id="tx-desc" type="text" maxlength="200" placeholder="Description" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
           <select id="tx-category" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg" required></select>
           <select id="tx-type" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg">
             <option value="expense">Expense</option>
@@ -212,7 +213,7 @@
       <div class="card p-5">
         <h2 class="font-bold mb-4">Create Savings Goal</h2>
         <form id="goal-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input id="goal-name" type="text" placeholder="Goal name" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
+          <input id="goal-name" type="text" maxlength="100" placeholder="Goal name" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
           <input id="goal-target" type="number" min="1" step="0.01" placeholder="Target amount" class="px-3 py-2 border border-slate-300 rounded-lg" required />
           <button class="px-3 py-2 rounded-lg btn-primary" type="submit">Add Goal</button>
         </form>
@@ -226,7 +227,7 @@
         <h2 class="font-bold mb-3">Add Loan</h2>
         <form id="loan-form" class="grid grid-cols-1 md:grid-cols-6 gap-2">
           <input id="loan-date" type="date" class="px-2 py-1 border border-slate-300 rounded" required />
-          <input id="loan-party" type="text" placeholder="Person / Entity" class="px-2 py-1 border border-slate-300 rounded" required />
+          <input id="loan-party" type="text" maxlength="100" placeholder="Person / Entity" class="px-2 py-1 border border-slate-300 rounded" required />
           <select id="loan-type" class="px-2 py-1 border border-slate-300 rounded"><option value="given">Given</option><option value="taken">Taken</option></select>
           <input id="loan-amount" type="number" min="0.01" step="0.01" placeholder="Amount" class="px-2 py-1 border border-slate-300 rounded" required />
           <select id="loan-status" class="px-2 py-1 border border-slate-300 rounded"><option value="open">Open</option><option value="closed">Closed</option></select>
@@ -256,7 +257,7 @@
     <section id="view-settings" class="view hidden space-y-4">
       <div class="card p-5">
         <h2 class="font-bold mb-1">Firebase Cloud Connection</h2>
-        <p class="text-sm text-slate-600">Paste your Firebase client configuration below. This form does not persist API values. Enter your own Firebase values each session to avoid leaks.</p>
+        <p class="text-sm text-slate-600">Paste your Firebase client configuration below. Config values are saved in this browser for convenience. On shared computers, use Clear Saved Config before you leave.</p>
         <form id="firebase-settings-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div class="md:col-span-2 flex flex-wrap gap-2 items-center">
             <button id="btn-google-login" type="button" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-semibold">Sign in with Google</button>
@@ -289,7 +290,7 @@
           </div>
           <div class="md:col-span-2">
             <label class="text-sm text-slate-600">Workspace ID (cloud document namespace)</label>
-            <input id="fb-workspace-id" type="text" placeholder="my-finance-workspace" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
+            <input id="fb-workspace-id" type="text" maxlength="60" placeholder="my-finance-workspace" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
           <div class="md:col-span-2 flex flex-wrap gap-2">
             <button type="submit" class="px-4 py-2 rounded-lg btn-primary">Save & Connect Cloud</button>
@@ -368,6 +369,10 @@
 
     const $ = (id) => document.getElementById(id);
     const money = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: state.currency || "USD" }).format(Number(n || 0));
+    const htmlEscape = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const safeText = (value, maxLength) => String(value ?? "").trim().slice(0, maxLength);
+    const safeAmount = (value, min = 0.01) => { const n = Number(value); return Number.isFinite(n) && n >= min ? n : null; };
+    const makeId = () => { try { if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID(); } catch (_) {} if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") { const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80; const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")); return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`; } return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`; };
 
     function wireUserLedgerDoc() {
       if (cloud.unsubscribe) {
@@ -412,7 +417,14 @@
     function applyCloudPayload(data) {
       state.tx = Array.isArray(data.tx) ? data.tx : [];
       state.goals = Array.isArray(data.goals) ? data.goals : [];
-      state.budgets = data.budgets && typeof data.budgets === "object" ? data.budgets : {};
+      state.budgets = Object.create(null);
+      if (data.budgets && typeof data.budgets === "object" && !Array.isArray(data.budgets)) {
+        for (const [key, rawLimit] of Object.entries(data.budgets)) {
+          if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+          const limit = safeAmount(rawLimit, 0);
+          if (limit !== null) state.budgets[safeText(key, 100)] = limit;
+        }
+      }
       state.loans = Array.isArray(data.loans) ? data.loans : [];
       state.currency = CURRENCY_OPTIONS.includes(data.currency) ? data.currency : "USD";
       $("currency-select").value = state.currency;
@@ -772,9 +784,9 @@
       if (q) rows = rows.filter((r) => r.desc.toLowerCase().includes(q));
       $("tx-table").innerHTML = rows.length ? rows.map((t) => `
         <tr class="border-b border-slate-100 hover:bg-slate-50">
-          <td class="p-2 whitespace-nowrap">${t.date}</td>
-          <td class="p-2">${t.desc}</td>
-          <td class="p-2">${t.category}</td>
+          <td class="p-2 whitespace-nowrap">${htmlEscape(t.date)}</td>
+          <td class="p-2">${htmlEscape(t.desc)}</td>
+          <td class="p-2">${htmlEscape(t.category)}</td>
           <td class="p-2 text-right ${t.type === "income" ? "text-emerald-700 font-semibold" : ""}">${money(t.amount)}</td>
           <td class="p-2"><span class="px-2 py-1 text-xs rounded-full ${t.type === "income" ? "pill-income" : "pill-expense"}">${t.type}</span></td>
           <td class="p-2 text-right"><button class="text-rose-600 hover:text-rose-800" data-del="${t.id}">Delete</button></td>
@@ -806,7 +818,7 @@
         const tone = spent > lim ? "bg-rose-500" : pct > 85 ? "bg-amber-500" : "bg-emerald-500";
         return `
           <div class="card p-4">
-            <div class="flex justify-between"><h3 class="font-semibold">${cat}</h3><span class="text-sm text-slate-500">${money(spent)} / ${money(lim)}</span></div>
+            <div class="flex justify-between"><h3 class="font-semibold">${htmlEscape(cat)}</h3><span class="text-sm text-slate-500">${money(spent)} / ${money(lim)}</span></div>
             <div class="mt-2 bg-slate-100 h-3 rounded-full overflow-hidden"><div class="h-3 ${tone}" style="width:${pct}%"></div></div>
             <p class="mt-2 text-xs ${spent > lim ? "text-rose-600" : "text-slate-500"}">${pct.toFixed(1)}% used</p>
           </div>
@@ -826,7 +838,7 @@
           <article class="card p-4">
             <div class="flex justify-between items-start gap-2">
               <div>
-                <h3 class="font-semibold">${g.name}</h3>
+                <h3 class="font-semibold">${htmlEscape(g.name)}</h3>
                 <p class="text-xs text-slate-500">${money(g.current)} of ${money(g.target)}</p>
               </div>
               <button data-goal-del="${g.id}" class="text-xs text-rose-600">Delete</button>
@@ -944,7 +956,7 @@
       const givenOpen = rows.filter(l=>l.type==="given" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
       const takenOpen = rows.filter(l=>l.type==="taken" && l.status==="open").reduce((s,l)=>s+Number(l.amount),0);
       $("loan-summary").textContent = `Outstanding Given: ${money(givenOpen)} | Outstanding Taken: ${money(takenOpen)}`;
-      const rowTemplate = (l)=>`<tr class="border-b border-slate-100"><td class="p-2">${l.date}</td><td class="p-2">${l.party}</td><td class="p-2 uppercase text-xs">${l.type}</td><td class="p-2 capitalize">${l.status}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right flex gap-3 justify-end"><button data-loan-toggle="${l.id}" class="text-sky-700">${l.status==="open" ? "Mark closed" : "Reopen"}</button><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`;
+      const rowTemplate = (l)=>`<tr class="border-b border-slate-100"><td class="p-2">${htmlEscape(l.date)}</td><td class="p-2">${htmlEscape(l.party)}</td><td class="p-2 uppercase text-xs">${htmlEscape(l.type)}</td><td class="p-2 capitalize">${htmlEscape(l.status)}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right flex gap-3 justify-end"><button data-loan-toggle="${l.id}" class="text-sky-700">${l.status==="open" ? "Mark closed" : "Reopen"}</button><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`;
       $("loan-pending-table").innerHTML = pendingRows.length ? pendingRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No pending loans.</td></tr>`;
       $("loan-closed-table").innerHTML = closedRows.length ? closedRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No closed loans.</td></tr>`;
       document.querySelectorAll("[data-loan-toggle]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; const targetLoan = state.loans.find((l)=>l.id===b.dataset.loanToggle); if(!targetLoan) return; targetLoan.status = targetLoan.status==="closed" ? "open" : "closed"; await persistCloudData(); rerenderAll(); }));
@@ -957,12 +969,12 @@
         e.preventDefault();
         if (!requireCloudOrWarn()) return;
         state.tx.push({
-          id: crypto.randomUUID(),
+          id: makeId(),
           date: $("tx-date").value,
-          desc: $("tx-desc").value.trim(),
+          desc: safeText($("tx-desc").value, 200),
           category: $("tx-category").value,
           type: $("tx-type").value,
-          amount: Number($("tx-amount").value),
+          amount: safeAmount($("tx-amount").value),
           createdAt: Date.now()
         });
         $("tx-desc").value = "";
@@ -975,9 +987,9 @@
         e.preventDefault();
         if (!requireCloudOrWarn()) return;
         state.goals.push({
-          id: crypto.randomUUID(),
-          name: $("goal-name").value.trim(),
-          target: Number($("goal-target").value),
+          id: makeId(),
+          name: safeText($("goal-name").value, 100),
+          target: safeAmount($("goal-target").value, 1),
           current: 0,
           createdAt: Date.now()
         });
@@ -991,8 +1003,9 @@
         e.preventDefault();
         if (!requireCloudOrWarn()) return;
         const category = $("budget-category").value;
-        const limit = Number($("budget-limit").value);
-        state.budgets[category] = limit;
+        const limit = safeAmount($("budget-limit").value, 0);
+        if (limit === null) return;
+        state.budgets[safeText(category, 100)] = limit;
         $("budget-limit").value = "";
         await persistCloudData();
         rerenderAll();
@@ -1009,7 +1022,7 @@
       $("loan-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!requireCloudOrWarn()) return;
-        state.loans.push({ id: crypto.randomUUID(), date: $("loan-date").value, party: $("loan-party").value.trim(), type: $("loan-type").value, amount: Number($("loan-amount").value), status: $("loan-status").value, createdAt: Date.now() });
+        state.loans.push({ id: makeId(), date: $("loan-date").value, party: $("loan-party").value.trim(), type: $("loan-type").value, amount: Number($("loan-amount").value), status: $("loan-status").value, createdAt: Date.now() });
         $("loan-party").value = "";
         $("loan-amount").value = "";
         await persistCloudData();

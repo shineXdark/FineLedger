@@ -51,7 +51,7 @@ Clone or download this repository.
 
 ### 2) Run the app locally (static hosting)
 
-You can open `index.html` directly, but serving with a static server is recommended.
+Serve with a local static server (recommended) because parts of the app rely on secure-browser APIs.
 
 Example:
 
@@ -90,6 +90,11 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Block workspace user-list enumeration.
+    match /fineledgerWorkspaces/{workspaceId}/users {
+      allow list: if false;
     }
 
     // FineLedger writes exactly one document:
