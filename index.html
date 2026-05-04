@@ -574,13 +574,13 @@
         await cloud.auth.getRedirectResult();
       } catch (err) {
         const msg = formatGoogleSignInError(err);
-        $("firebase-settings-status").textContent = msg;
+        setAuthMessage(msg);
       }
       bindAuthListener();
       wireUserLedgerDoc();
       renderCloudIndicator();
       updateGateScreens();
-      $("firebase-settings-status").textContent = `Connected to Firestore workspace: ${config.workspaceId}`;
+      setAuthMessage(`Connected to Firestore workspace: ${config.workspaceId}`);
     }
 
 
@@ -601,11 +601,27 @@
       $("auth-status").textContent = cloud.user ? `Signed in: ${cloud.user.email}` : "Not signed in.";
     }
 
+    function setAuthMessage(message) {
+      $("firebase-settings-status").textContent = message;
+      $("login-gate-status").textContent = message;
+    }
+
     async function signInWithGoogle() {
-      if (!cloud.auth) throw new Error("Connect Firebase config first.");
+      if (!cloud.auth) {
+        throw new Error("Connect Firebase config first.");
+      }
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await cloud.auth.signInWithRedirect(provider);
+
+      try {
+        await cloud.auth.signInWithPopup(provider);
+      } catch (err) {
+        if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
+          await cloud.auth.signInWithRedirect(provider);
+          return;
+        }
+        throw err;
+      }
     }
 
     async function signOutGoogle() {
@@ -1076,27 +1092,27 @@
         try {
           await connectCloud(config);
         } catch (err) {
-          $("firebase-settings-status").textContent = `Connect failed: ${err.message}`;
+          setAuthMessage(`Connect failed: ${err.message}`);
           await disconnectCloud();
         }
       });
 
       $("btn-disconnect-cloud").addEventListener("click", async () => {
         await disconnectCloud();
-        $("firebase-settings-status").textContent = "Cloud disconnected. Reconnect to continue working.";
+        setAuthMessage("Cloud disconnected. Reconnect to continue working.");
       });
       $("btn-google-login").addEventListener("click", async () => {
         try {
           await signInWithGoogle();
         } catch (err) {
-          $("firebase-settings-status").textContent = formatGoogleSignInError(err);
+          setAuthMessage(formatGoogleSignInError(err));
         }
       });
       $("btn-google-logout").addEventListener("click", signOutGoogle);
       $("gate-google-login").addEventListener("click", async () => {
         try { 
           await signInWithGoogle();
-        } catch (err) { $("firebase-settings-status").textContent = formatGoogleSignInError(err); }
+        } catch (err) { setAuthMessage(formatGoogleSignInError(err)); }
       });
 
       $("btn-cloud-help").addEventListener("click", () => {
