@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src https://*.firebaseapp.com https://accounts.google.com https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>FineLedger</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -577,6 +577,20 @@
       $("firebase-settings-status").textContent = `Connected to Firestore workspace: ${config.workspaceId}`;
     }
 
+
+    function formatGoogleSignInError(err) {
+      const code = err?.code || "unknown";
+      const detailsByCode = {
+        "auth/unauthorized-domain": "Add this site domain to Firebase Authentication > Settings > Authorized domains.",
+        "auth/popup-blocked": "Allow pop-ups for this site, or retry to use redirect sign-in fallback.",
+        "auth/operation-not-allowed": "Enable Google provider in Firebase Authentication > Sign-in method.",
+        "auth/invalid-api-key": "Check Firebase config: apiKey/authDomain/projectId must match the same project.",
+        "auth/network-request-failed": "Network blocked Firebase/Google endpoints. Check firewall, extensions, or CSP.",
+      };
+      const details = detailsByCode[code] || (err?.message || "Unknown sign-in issue.");
+      return `Google sign-in failed (${code}). ${details} Firestore rules do not control the sign-in step.`;
+    }
+
     function renderAuthStatus() {
       $("auth-status").textContent = cloud.user ? `Signed in: ${cloud.user.email}` : "Not signed in.";
     }
@@ -584,7 +598,16 @@
     async function signInWithGoogle() {
       if (!cloud.auth) throw new Error("Connect Firebase config first.");
       const provider = new firebase.auth.GoogleAuthProvider();
-      await cloud.auth.signInWithPopup(provider);
+      provider.setCustomParameters({ prompt: "select_account" });
+      try {
+        await cloud.auth.signInWithPopup(provider);
+      } catch (err) {
+        if (err?.code === "auth/popup-blocked") {
+          await cloud.auth.signInWithRedirect(provider);
+          return;
+        }
+        throw err;
+      }
     }
 
     async function signOutGoogle() {
@@ -1068,14 +1091,14 @@
         try {
           await signInWithGoogle();
         } catch (err) {
-          $("firebase-settings-status").textContent = `Google sign-in failed: ${err.message}`;
+          $("firebase-settings-status").textContent = formatGoogleSignInError(err);
         }
       });
       $("btn-google-logout").addEventListener("click", signOutGoogle);
       $("gate-google-login").addEventListener("click", async () => {
         try { 
           await signInWithGoogle();
-        } catch (err) { $("firebase-settings-status").textContent = `Google sign-in failed: ${err.message}`; }
+        } catch (err) { $("firebase-settings-status").textContent = formatGoogleSignInError(err); }
       });
 
       $("btn-cloud-help").addEventListener("click", () => {
