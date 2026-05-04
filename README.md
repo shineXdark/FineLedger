@@ -84,26 +84,41 @@ Use rules that only allow a signed-in user to read/write their own ledger docume
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Block workspace user-list enumeration.
+    function validLedger() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['tx', 'goals', 'budgets', 'loans', 'currency', 'updatedAt'])
+          && d.tx is list
+          && d.goals is list
+          && d.budgets is map
+          && d.loans is list
+          && d.currency is string
+          && d.currency.size() <= 10
+          && d.updatedAt is int;
+    }
+
+    // Block workspace-level and user-list enumeration
+    match /fineledgerWorkspaces/{workspaceId} {
+      allow read, write: if false;
+    }
+
     match /fineledgerWorkspaces/{workspaceId}/users {
       allow list: if false;
     }
 
-    // FineLedger writes exactly one document:
-    // /fineledgerWorkspaces/{workspaceId}/users/{uid}/data/ledger
+    // The one document each user owns
     match /fineledgerWorkspaces/{workspaceId}/users/{userId}/data/ledger {
-      allow get, create, update, delete: if isOwner(userId);
+      allow get:    if isOwner(userId);
+      allow create: if isOwner(userId) && validLedger();
+      allow update: if isOwner(userId) && validLedger();
+      allow delete: if isOwner(userId);
     }
 
-    // Deny everything else by default.
+    // Deny everything not explicitly matched above
     match /{document=**} {
       allow read, write: if false;
     }
