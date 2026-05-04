@@ -1036,8 +1036,39 @@
       const rowTemplate = (l)=>`<tr class="border-b border-slate-100"><td class="p-2">${htmlEscape(l.date)}</td><td class="p-2">${htmlEscape(l.party)}</td><td class="p-2 uppercase text-xs">${htmlEscape(l.type)}</td><td class="p-2 capitalize">${htmlEscape(l.status)}</td><td class="p-2 text-right">${money(l.amount)}</td><td class="p-2 text-right flex gap-3 justify-end"><button data-loan-toggle="${l.id}" class="text-sky-700">${l.status==="open" ? "Mark closed" : "Reopen"}</button><button data-loan-del="${l.id}" class="text-rose-700">Delete</button></td></tr>`;
       $("loan-pending-table").innerHTML = pendingRows.length ? pendingRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No pending loans.</td></tr>`;
       $("loan-closed-table").innerHTML = closedRows.length ? closedRows.map(rowTemplate).join("") : `<tr><td colspan="6" class="p-4 text-center text-slate-500">No closed loans.</td></tr>`;
-      document.querySelectorAll("[data-loan-toggle]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; const targetLoan = state.loans.find((l)=>l.id===b.dataset.loanToggle); if(!targetLoan) return; targetLoan.status = targetLoan.status==="closed" ? "open" : "closed"; await persistCloudData(); rerenderAll(); }));
-      document.querySelectorAll("[data-loan-del]").forEach((b)=>b.addEventListener("click", async ()=>{ if(!requireCloudOrWarn()) return; state.loans = state.loans.filter((l)=>l.id!==b.dataset.loanDel); await persistCloudData(); rerenderAll(); }));
+      document.querySelectorAll("[data-loan-toggle]").forEach((b)=>b.addEventListener("click", async ()=>{
+        if(!requireCloudOrWarn()) return;
+        const targetLoan = state.loans.find((l)=>l.id===b.dataset.loanToggle);
+        if(!targetLoan) return;
+        const nextStatus = targetLoan.status==="closed" ? "open" : "closed";
+        targetLoan.status = nextStatus;
+        if (nextStatus === "closed") {
+          const repaymentType = targetLoan.type === "given" ? "income" : "expense";
+          const repaymentCategory = targetLoan.type === "given" ? "Loan Repayment In" : "Loan Repayment Out";
+          state.tx.push({
+            id: makeId(),
+            date: new Date().toISOString().slice(0, 10),
+            desc: `Loan repayment — ${safeText(targetLoan.party, 100)}`,
+            category: repaymentCategory,
+            type: repaymentType,
+            amount: safeAmount(targetLoan.amount),
+            kind: "loan_repayment",
+            loanId: targetLoan.id,
+            createdAt: Date.now()
+          });
+        } else {
+          state.tx = state.tx.filter((t)=>!(t.loanId===targetLoan.id && t.kind==="loan_repayment"));
+        }
+        await persistCloudData();
+        rerenderAll();
+      }));
+      document.querySelectorAll("[data-loan-del]").forEach((b)=>b.addEventListener("click", async ()=>{
+        if(!requireCloudOrWarn()) return;
+        state.loans = state.loans.filter((l)=>l.id!==b.dataset.loanDel);
+        state.tx = state.tx.filter((t)=>t.loanId!==b.dataset.loanDel);
+        await persistCloudData();
+        rerenderAll();
+      }));
     }
 
     function hookForms() {
@@ -1099,7 +1130,37 @@
       $("loan-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!requireCloudOrWarn()) return;
-        state.loans.push({ id: makeId(), date: $("loan-date").value, party: $("loan-party").value.trim(), type: $("loan-type").value, amount: Number($("loan-amount").value), status: $("loan-status").value, createdAt: Date.now() });
+        const loanId = makeId();
+        const loanDate = $("loan-date").value;
+        const loanParty = safeText($("loan-party").value, 100);
+        const loanType = $("loan-type").value;
+        const loanAmount = safeAmount($("loan-amount").value);
+        const loanStatus = $("loan-status").value;
+        state.loans.push({ id: loanId, date: loanDate, party: loanParty, type: loanType, amount: loanAmount, status: loanStatus, createdAt: Date.now() });
+        state.tx.push({
+          id: makeId(),
+          date: loanDate,
+          desc: loanType === "given" ? `Loan disbursed — ${loanParty}` : `Loan proceeds — ${loanParty}`,
+          category: loanType === "given" ? "Loan Disbursed" : "Loan Proceeds",
+          type: loanType === "given" ? "expense" : "income",
+          amount: loanAmount,
+          kind: "loan_principal",
+          loanId,
+          createdAt: Date.now()
+        });
+        if (loanStatus === "closed") {
+          state.tx.push({
+            id: makeId(),
+            date: loanDate,
+            desc: `Loan repayment — ${loanParty}`,
+            category: loanType === "given" ? "Loan Repayment In" : "Loan Repayment Out",
+            type: loanType === "given" ? "income" : "expense",
+            amount: loanAmount,
+            kind: "loan_repayment",
+            loanId,
+            createdAt: Date.now()
+          });
+        }
         $("loan-party").value = "";
         $("loan-amount").value = "";
         await persistCloudData();
