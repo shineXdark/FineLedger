@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src https://*.firebaseapp.com https://accounts.google.com https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>FineLedger</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -570,6 +570,12 @@
       cloud.workspaceId = config.workspaceId;
       saveFirebaseConfigLocal(config);
       cloud.connected = true;
+      try {
+        await cloud.auth.getRedirectResult();
+      } catch (err) {
+        const msg = formatGoogleSignInError(err);
+        $("firebase-settings-status").textContent = msg;
+      }
       bindAuthListener();
       wireUserLedgerDoc();
       renderCloudIndicator();
@@ -582,7 +588,7 @@
       const code = err?.code || "unknown";
       const detailsByCode = {
         "auth/unauthorized-domain": "Add this site domain to Firebase Authentication > Settings > Authorized domains.",
-        "auth/popup-blocked": "Allow pop-ups for this site, or retry to use redirect sign-in fallback.",
+        "auth/popup-blocked": "Allow pop-ups for this site if needed. This app now uses redirect sign-in by default.",
         "auth/operation-not-allowed": "Enable Google provider in Firebase Authentication > Sign-in method.",
         "auth/invalid-api-key": "Check Firebase config: apiKey/authDomain/projectId must match the same project.",
         "auth/network-request-failed": "Network blocked Firebase/Google endpoints. Check firewall, extensions, or CSP.",
@@ -599,15 +605,7 @@
       if (!cloud.auth) throw new Error("Connect Firebase config first.");
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      try {
-        await cloud.auth.signInWithPopup(provider);
-      } catch (err) {
-        if (err?.code === "auth/popup-blocked") {
-          await cloud.auth.signInWithRedirect(provider);
-          return;
-        }
-        throw err;
-      }
+      await cloud.auth.signInWithRedirect(provider);
     }
 
     async function signOutGoogle() {
