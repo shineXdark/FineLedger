@@ -364,7 +364,8 @@
       syncing: false,
       workspaceId: "",
       auth: null,
-      user: null
+      user: null,
+      ledgerAccess: false
     };
 
     const $ = (id) => document.getElementById(id);
@@ -381,6 +382,7 @@
       }
       cloud.docRef = null;
       if (!cloud.connected || !cloud.user || !cloud.db) return;
+      cloud.ledgerAccess = false;
       cloud.docRef = cloud.db
         .collection("fineledgerWorkspaces")
         .doc(cloud.workspaceId)
@@ -391,11 +393,19 @@
       $("firebase-settings-status").textContent = `Syncing personal ledger for ${cloud.user.email || cloud.user.uid} in workspace ${cloud.workspaceId}.`;
       cloud.unsubscribe = cloud.docRef.onSnapshot((snap) => {
         cloud.syncing = true;
+        cloud.ledgerAccess = true;
         if (snap.exists) applyCloudPayload(snap.data() || {});
         else cloud.docRef.set(getCloudPayload(), { merge: true });
         cloud.syncing = false;
       }, (err) => {
-        $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
+        cloud.ledgerAccess = false;
+        if (err?.code === "permission-denied") {
+          $("firebase-settings-status").textContent = "Cloud access denied by Firestore rules. Allow get/create/update for /fineledgerWorkspaces/{workspaceId}/users/{uid}/data/ledger where request.auth.uid == uid.";
+        } else {
+          $("firebase-settings-status").textContent = `Cloud sync listener error: ${err.message}`;
+        }
+        updateGateScreens();
+        renderCloudIndicator();
       });
     }
 
@@ -434,11 +444,17 @@
     function renderCloudIndicator() {
       const indicator = $("cloud-indicator");
       const status = $("data-status");
-      if (cloud.connected && cloud.user) {
+      if (cloud.connected && cloud.user && cloud.ledgerAccess) {
         indicator.textContent = `☁️ Cloud sync active (${cloud.workspaceId})`;
         indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 text-center sm:text-left w-full sm:w-auto shadow-sm ring-1 ring-emerald-200";
         status.className = "hidden";
         status.textContent = "";
+      } else if (cloud.connected && cloud.user && !cloud.ledgerAccess) {
+        status.classList.remove("hidden");
+        indicator.textContent = "☁️ Signed in - rules blocking ledger";
+        indicator.className = "text-sm border rounded-lg px-3 py-2 font-semibold border-rose-300 bg-rose-50 text-rose-700 text-center sm:text-left w-full sm:w-auto";
+        status.className = "card p-3 text-sm border-rose-300 bg-rose-50 text-rose-800";
+        status.textContent = "Signed in, but Firestore rules are blocking your ledger path. Update rules for your UID-scoped ledger document.";
       } else if (cloud.connected && !cloud.user) {
         status.classList.remove("hidden");
         indicator.textContent = "☁️ Connected - sign in required";
@@ -545,6 +561,7 @@
       cloud.user = null;
       cloud.connected = false;
       cloud.workspaceId = "";
+      cloud.ledgerAccess = false;
       renderCloudIndicator();
       updateGateScreens();
     }
@@ -668,7 +685,7 @@
         setup.classList.add("hidden");
         setupStatus.textContent = `Connected to ${cloud.workspaceId}.`;
 
-        if (cloud.user) {
+        if (cloud.user && cloud.ledgerAccess) {
           login.classList.add("hidden");
           app.classList.remove("hidden");
         } else {
