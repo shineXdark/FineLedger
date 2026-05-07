@@ -126,6 +126,68 @@
     ::-webkit-scrollbar-track { background: #f8fafc; }
     .mobile-scroll-tabs { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
     .mobile-scroll-tabs::-webkit-scrollbar { height: 5px; }
+
+    .fl-select {
+      appearance: none;
+      border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
+      background:
+        linear-gradient(145deg, color-mix(in srgb, var(--card) 90%, #fff), color-mix(in srgb, var(--bg-card) 84%, #dbe5ff));
+      border-radius: .75rem;
+      padding: .56rem 2.35rem .56rem .85rem;
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.55),
+        0 8px 20px rgb(76 96 164 / 0.12);
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: .01em;
+      backdrop-filter: blur(4px);
+      transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 8l5 5 5-5' stroke='%235b6992' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .68rem center;
+      background-size: 1rem;
+    }
+    .fl-select:hover {
+      border-color: color-mix(in srgb, var(--primary) 50%, var(--line));
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.68),
+        0 10px 22px rgb(76 96 164 / 0.16);
+    }
+    .fl-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.7),
+        0 0 0 3px color-mix(in srgb, var(--primary) 24%, transparent),
+        0 12px 24px rgb(76 96 164 / 0.22);
+    }
+    .fl-select option {
+      background: color-mix(in srgb, var(--card) 92%, #f4f7ff);
+      color: var(--text);
+      font-weight: 600;
+    }
+    :root.dark .fl-select {
+      border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+      background: linear-gradient(145deg, rgb(18 25 52 / 0.95), rgb(26 36 72 / 0.96));
+      box-shadow:
+        inset 0 1px 0 rgb(148 163 184 / 0.22),
+        0 10px 24px rgb(2 6 23 / 0.5);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 8l5 5 5-5' stroke='%23b5c1ff' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .68rem center;
+      background-size: 1rem;
+    }
+    :root.dark .fl-select:hover {
+      box-shadow:
+        inset 0 1px 0 rgb(148 163 184 / 0.3),
+        0 12px 26px rgb(2 6 23 / 0.56);
+    }
+    :root.dark .fl-select option {
+      background: rgb(12 19 44);
+      color: rgb(234 239 255);
+    }
+
     .period-filter {
       appearance: none;
       border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
@@ -230,7 +292,7 @@
         <label class="switch"><span>Light</span><input id="dark-mode-toggle" type="checkbox" /><span>Dark</span></label>
         <div class="flex items-center justify-between gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <span class="text-xs text-slate-500 uppercase tracking-wide">Currency</span>
-          <select id="currency-select" class="text-sm bg-white border border-slate-300 rounded-md px-2 py-1"></select>
+          <select id="currency-select" class="fl-select text-sm"></select>
         </div>
         <div class="relative">
           <button id="cloud-indicator" type="button" class="text-sm border rounded-lg px-3 py-2 font-semibold border-amber-300 bg-amber-50 text-amber-700 text-center sm:text-left w-full sm:w-auto">
@@ -269,7 +331,7 @@
         <div class="card p-5 xl:col-span-2">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="font-bold">Monthly Cashflow Distribution</h2>
-            <select id="overview-month" class="period-filter text-sm min-w-[11rem]" aria-label="Overview period filter"></select>
+            <select id="overview-month" class="fl-select period-filter text-sm min-w-[11rem]" aria-label="Overview period filter"></select>
           </div>
           <div class="h-[320px]"><canvas id="chart-cashflow"></canvas></div>
         </div>
@@ -289,8 +351,8 @@
         <h2 class="font-bold mb-4">Add Transaction</h2>
         <form id="tx-form" class="grid grid-cols-1 md:grid-cols-6 gap-3">
           <input id="tx-desc" type="text" maxlength="200" placeholder="Description" class="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg" required />
-          <select id="tx-category" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg" required></select>
-          <select id="tx-type" class="md:col-span-1 px-3 py-2 border border-slate-300 rounded-lg">
+          <select id="tx-category" class="fl-select md:col-span-1" required></select>
+          <select id="tx-type" class="fl-select md:col-span-1">
             <option value="expense">Expense</option>
             <option value="income">Income</option>
           </select>
@@ -304,7 +366,7 @@
           <h2 class="font-bold">Ledger</h2>
           <div class="flex w-full sm:w-auto gap-2">
             <input id="tx-search" placeholder="Search description" class="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg" />
-            <select id="tx-month" class="period-filter text-sm" aria-label="Transaction period filter"></select>
+            <select id="tx-month" class="fl-select period-filter text-sm" aria-label="Transaction period filter"></select>
           </div>
         </div>
         <div class="overflow-auto mt-3 max-h-[420px]">
@@ -324,7 +386,7 @@
       <div class="card p-5">
         <h2 class="font-bold mb-4">Monthly Category Budgets</h2>
         <form id="budget-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <select id="budget-category" class="px-3 py-2 border border-slate-300 rounded-lg"></select>
+          <select id="budget-category" class="fl-select"></select>
           <input id="budget-limit" type="number" min="1" step="0.01" placeholder="Monthly limit" class="px-3 py-2 border border-slate-300 rounded-lg" />
           <button class="px-3 py-2 rounded-lg btn-primary" type="submit">Set/Update Budget</button>
           <button id="btn-reset-budgets" class="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold" type="button">Reset All</button>
@@ -352,9 +414,9 @@
         <form id="loan-form" class="grid grid-cols-1 md:grid-cols-6 gap-2">
           <input id="loan-date" type="date" class="px-2 py-1 border border-slate-300 rounded" required />
           <input id="loan-party" type="text" maxlength="100" placeholder="Person / Entity" class="px-2 py-1 border border-slate-300 rounded" required />
-          <select id="loan-type" class="px-2 py-1 border border-slate-300 rounded"><option value="given">Given</option><option value="taken">Taken</option></select>
+          <select id="loan-type" class="fl-select"><option value="given">Given</option><option value="taken">Taken</option></select>
           <input id="loan-amount" type="number" min="0.01" step="0.01" placeholder="Amount" class="px-2 py-1 border border-slate-300 rounded" required />
-          <select id="loan-status" class="px-2 py-1 border border-slate-300 rounded"><option value="open">Open</option><option value="closed">Closed</option></select>
+          <select id="loan-status" class="fl-select"><option value="open">Open</option><option value="closed">Closed</option></select>
           <button class="px-3 py-1 rounded btn-primary text-sm" type="submit">Save</button>
         </form>
       </div>
