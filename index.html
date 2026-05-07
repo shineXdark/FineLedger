@@ -99,7 +99,10 @@
 :root.dark .tab-btn:not(.tab-active) { color: rgb(226 232 240) !important; }
 :root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
-    .tab-active { background: var(--primary); color: white; }
+    .tab-btn { color: var(--text-sec); transition: background-color .2s ease, color .2s ease; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-active { background: var(--primary); color: white !important; }
+    .tab-active:hover { background: var(--primary); color: white !important; }
     
     .btn-primary{background:var(--primary);color:#fff;font-weight:600}
     .btn-primary:hover{filter:brightness(1.05)}
