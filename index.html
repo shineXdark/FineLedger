@@ -107,6 +107,7 @@
     .tab-active:hover { background: var(--primary); color: white !important; }
     .ledger-row { color: var(--text); border-bottom: 1px solid var(--line); }
     .ledger-row:hover { background: color-mix(in srgb, var(--line) 45%, transparent); }
+    .ledger-row.day-separator td { border-top: 3px solid color-mix(in srgb, var(--primary) 45%, var(--line)); }
     
     .btn-primary{background:var(--primary);color:#fff;font-weight:600}
     .btn-primary:hover{filter:brightness(1.05)}
@@ -172,6 +173,9 @@
         inset 0 1px 0 rgb(148 163 184 / 0.22),
         0 12px 28px rgb(2 6 23 / 0.56);
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 8l5 5 5-5' stroke='%23b5c1ff' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .68rem center;
+      background-size: 1rem;
     }
     :root.dark .period-filter:hover {
       box-shadow:
@@ -1006,12 +1010,10 @@
         let previousDate = "";
         const html = [];
         for (const t of rows) {
-          if (previousDate && previousDate !== t.date) {
-            html.push(`<tr><td colspan="6" class="h-2"></td></tr>`);
-          }
+          const isNewDay = previousDate && previousDate !== t.date;
           previousDate = t.date;
           html.push(`
-        <tr class="ledger-row">
+        <tr class="ledger-row${isNewDay ? " day-separator" : ""}">
           <td class="p-2 whitespace-nowrap">${htmlEscape(formatDateTime(t.date, t.createdAt))}</td>
           <td class="p-2">${htmlEscape(t.desc)}</td>
           <td class="p-2">${htmlEscape(t.category)}</td>
