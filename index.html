@@ -100,9 +100,11 @@
 :root.dark body { background: rgb(2 6 23); color: rgb(226 232 240); }
     :root.dark .card { background: rgb(30 41 59); border-color: rgb(71 85 105); box-shadow: none; }
     .tab-btn { color: var(--text-sec); transition: background-color .2s ease, color .2s ease; }
-    .tab-btn:hover { color: var(--text); }
+    .tab-btn:not(.tab-active):hover { background: color-mix(in srgb, var(--line) 65%, transparent); color: var(--text); }
     .tab-active { background: var(--primary); color: white !important; }
     .tab-active:hover { background: var(--primary); color: white !important; }
+    .ledger-row { color: var(--text); border-bottom: 1px solid var(--line); }
+    .ledger-row:hover { background: color-mix(in srgb, var(--line) 45%, transparent); }
     
     .btn-primary{background:var(--primary);color:#fff;font-weight:600}
     .btn-primary:hover{filter:brightness(1.05)}
@@ -184,10 +186,10 @@
 
     <section class="card p-3 md:p-4 flex gap-2 bg-white/70 overflow-x-auto whitespace-nowrap mobile-scroll-tabs" id="tabs">
       <button data-view="overview" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold">Overview</button>
-      <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Transactions</button>
-      <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Budgets</button>
-      <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Savings Goals</button>
-      <button data-view="loans" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Loans</button>
+      <button data-view="transactions" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold">Transactions</button>
+      <button data-view="budgets" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold">Budgets</button>
+      <button data-view="goals" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold">Savings Goals</button>
+      <button data-view="loans" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold">Loans</button>
     </section>
 
     <section id="view-overview" class="view space-y-6">
@@ -896,7 +898,7 @@
       }
       if (q) rows = rows.filter((r) => r.desc.toLowerCase().includes(q));
       $("tx-table").innerHTML = rows.length ? rows.map((t) => `
-        <tr class="border-b border-slate-100 hover:bg-slate-50">
+        <tr class="ledger-row">
           <td class="p-2 whitespace-nowrap">${htmlEscape(t.date)}</td>
           <td class="p-2">${htmlEscape(t.desc)}</td>
           <td class="p-2">${htmlEscape(t.category)}</td>
