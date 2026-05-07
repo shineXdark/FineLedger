@@ -34,9 +34,42 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <style>
-    :root { color-scheme: light; --bg:#f8fafc; --card:#ffffff; --line:#dbe1ea; --text:#0f172a; --muted:#64748b; --primary:#0f172a; --success:#166534; --danger:#991b1b; }
-    :root.dark { color-scheme: dark; }
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    :root {
+      color-scheme: light;
+      --bg: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --line: #E2E8F0;
+      --text: #0F172A;
+      --text-sec: #475569;
+      --text-muted: #94A3B8;
+      --muted: #94A3B8;
+      --primary: #00A8FF;
+      --success: #059669;
+      --danger: #E11D48;
+    }
+    :root.dark {
+      color-scheme: dark;
+      --bg: #0C0E14;
+      --bg-card: #141722;
+      --card: #141722;
+      --border: #232838;
+      --line: #232838;
+      --text: #E8EAF0;
+      --text-sec: #7A809A;
+      --text-muted: #4A5068;
+      --muted: #4A5068;
+      --primary: #00A8FF;
+      --success: #00D68F;
+      --danger: #FF2D55;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.35s ease, color 0.35s ease;
+    }
     
     
     .card { border: 1px solid var(--line); border-radius: .65rem; box-shadow:none; background: var(--card); }
