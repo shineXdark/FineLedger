@@ -1023,21 +1023,43 @@
         data: {
           labels: series.labels.length ? series.labels : ["No data"],
           datasets: [
-            { label: "Income", backgroundColor: "rgba(16,185,129,0.82)", borderColor: "#059669", borderWidth: 1, borderRadius: 8, maxBarThickness: 34, data: series.income.length ? series.income : [0] },
-            { label: "Expense", backgroundColor: "rgba(244,63,94,0.82)", borderColor: "#e11d48", borderWidth: 1, borderRadius: 8, maxBarThickness: 34, data: series.expense.length ? series.expense : [0] }
+            {
+              label: "Income",
+              data: series.income.length ? series.income : [0],
+              backgroundColor: "rgba(16,185,129,0.82)",
+              borderColor: "rgba(16,185,129,1)",
+              borderWidth: 1,
+              borderRadius: 0,
+              borderSkipped: false,
+              categoryPercentage: 0.8,
+              barPercentage: 0.9,
+              maxBarThickness: 40
+            },
+            {
+              label: "Expense",
+              data: series.expense.length ? series.expense : [0],
+              backgroundColor: "rgba(244,63,94,0.82)",
+              borderColor: "rgba(244,63,94,1)",
+              borderWidth: 1,
+              borderRadius: 0,
+              borderSkipped: false,
+              categoryPercentage: 0.8,
+              barPercentage: 0.9,
+              maxBarThickness: 40
+            }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: { mode: "index", intersect: false },
           plugins: {
-            legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "rectRounded", padding: 14 } },
+            legend: { position: "top" },
+            title: { display: true, text: "Monthly Cashflow Trend" },
             tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8 }
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: "#64748b" } },
-            y: { grid: { color: "rgba(148,163,184,0.2)" }, ticks: { color: "#64748b" }, beginAtZero: true }
+            y: { beginAtZero: true, grid: { color: "rgba(148,163,184,0.2)" }, ticks: { color: "#64748b" } }
           }
         }
       });
@@ -1049,6 +1071,9 @@
           datasets: [{
             data: Object.values(expenseCats).length ? Object.values(expenseCats) : [1],
             backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#8DD17E", "#C9CBCF"],
+            borderWidth: 0,
+            borderColor: "rgba(0,0,0,0)",
+            hoverBorderColor: "rgba(0,0,0,0)",
             hoverOffset: 4
           }]
         },
