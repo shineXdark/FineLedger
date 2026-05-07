@@ -65,11 +65,13 @@
       --danger: #FF7BA3;
     }
     body {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: 'Segoe UI', 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       transition: background 0.35s ease, color 0.35s ease;
     }
+    input, select, textarea, button, table { font-family: inherit; }
+
     
     
     .card { border: 1px solid var(--line); border-radius: 1rem; box-shadow:none; background: var(--card); }
@@ -204,13 +206,13 @@
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div class="card p-5 xl:col-span-2">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="font-bold">Monthly Cashflow Trend</h2>
+            <h2 class="font-bold">Monthly Cashflow Distribution</h2>
             <select id="overview-month" class="px-3 py-2 text-sm border border-slate-300 rounded-lg min-w-[9rem]" aria-label="Overview period filter"></select>
           </div>
           <div class="h-[320px]"><canvas id="chart-cashflow"></canvas></div>
         </div>
         <div class="card p-5">
-          <h2 class="font-bold mb-4">Expense Category Mix</h2>
+          <h2 class="font-bold mb-4">Expense Category Distribution</h2>
           <div class="h-[320px]"><canvas id="chart-categories"></canvas></div>
         </div>
       </div>
@@ -818,6 +820,28 @@
       };
     }
 
+    function formatMonthLabel(month) {
+      const [year, mon] = month.split("-");
+      const dt = new Date(Number(year), Number(mon) - 1, 1);
+      return dt.toLocaleString("en-US", { month: "short" });
+    }
+
+    function getOrdinal(n) {
+      const mod100 = n % 100;
+      if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+      const mod10 = n % 10;
+      if (mod10 === 1) return `${n}st`;
+      if (mod10 === 2) return `${n}nd`;
+      if (mod10 === 3) return `${n}rd`;
+      return `${n}th`;
+    }
+
+    function getWeekOfMonth(dateStr) {
+      const date = new Date(`${dateStr}T00:00:00`);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      return Math.ceil((date.getDate() + monthStart.getDay()) / 7);
+    }
+
     function renderMonthFilter() {
       const selects = [$("tx-month"), $("overview-month")].filter(Boolean);
       const previous = selects.find((s) => s.value)?.value || "";
@@ -825,35 +849,41 @@
       const currentMonth = now.toISOString().slice(0, 7);
       const currentYear = String(now.getFullYear());
 
-      const months = [...new Set(state.tx.map((t) => monthKey(t.date)))].sort().reverse();
-      const years = [...new Set(state.tx.map((t) => yearKey(t.date)))].sort().reverse();
+      const months = [...new Set(state.tx.map((t) => monthKey(t.date)))].sort();
+      const years = [...new Set(state.tx.map((t) => yearKey(t.date)))].sort();
+      const options = [];
 
-      const options = [{ value: `month:${currentMonth}`, label: "Month" }];
-
-      const currentMonthTx = state.tx.filter((t) => monthKey(t.date) === currentMonth);
-      if (currentMonthTx.length) {
-        const weeks = [...new Map(currentMonthTx.map((t) => {
-          const range = weekRangeFromDate(t.date);
-          return [range.start, range];
-        })).values()].sort((a, b) => b.start.localeCompare(a.start));
-
-        for (const range of weeks) {
+      for (const year of years.reverse()) {
+        options.push({ value: `year:${year}`, label: `📁 Year ${year}` });
+        const yearMonths = months.filter((m) => m.startsWith(`${year}-`)).sort().reverse();
+        for (const month of yearMonths) {
+          const isCurrent = month === currentMonth;
           options.push({
-            value: `week:${range.start}:${range.end}`,
-            label: `Week ${range.start} to ${range.end}`,
+            value: `month:${month}`,
+            label: `   └─ 📅 ${isCurrent ? "Current " : ""}Month ${formatMonthLabel(month)} (${month})`,
           });
+          const monthTx = state.tx.filter((t) => monthKey(t.date) === month);
+          const weeks = [...new Map(monthTx.map((t) => {
+            const range = weekRangeFromDate(t.date);
+            return [range.start, { ...range, sourceDate: t.date }];
+          })).values()].sort((a, b) => a.start.localeCompare(b.start));
+          for (const range of weeks) {
+            const startDay = Number(range.start.slice(8, 10));
+            const endDay = Number(range.end.slice(8, 10));
+            const weekNumber = getWeekOfMonth(range.sourceDate);
+            options.push({
+              value: `week:${range.start}:${range.end}`,
+              label: `      └─ Week ${weekNumber}, ${getOrdinal(startDay)} - ${getOrdinal(endDay)}`,
+            });
+          }
         }
       }
-
-      const monthOptions = months.filter((m) => m !== currentMonth).map((m) => ({ value: `month:${m}`, label: `Month ${m}` }));
-      options.push(...monthOptions);
-      for (const y of years) options.push({ value: `year:${y}`, label: `Year ${y}` });
 
       for (const select of selects) {
         select.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
       }
 
-      const nextValue = options.some((o) => o.value === previous) ? previous : `month:${currentMonth}`;
+      const nextValue = options.some((o) => o.value === previous) ? previous : (options[0]?.value || `month:${currentMonth}`);
       for (const select of selects) select.value = nextValue;
     }
 
@@ -1050,16 +1080,18 @@
           ]
         },
         options: {
+          devicePixelRatio: Math.max(window.devicePixelRatio || 1, 1.5),
           responsive: true,
           maintainAspectRatio: false,
+          animation: false,
+          font: { family: "'Segoe UI', 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif" },
           plugins: {
-            legend: { position: "top" },
-            title: { display: true, text: "Monthly Cashflow Trend" },
+            legend: { position: "top", labels: { color: getComputedStyle(document.documentElement).getPropertyValue("--text").trim() } },
             tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8 }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { color: "#64748b" } },
-            y: { beginAtZero: true, grid: { color: "rgba(148,163,184,0.2)" }, ticks: { color: "#64748b" } }
+            x: { grid: { display: false }, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue("--text-sec").trim() } },
+            y: { beginAtZero: true, grid: { color: "rgba(148,163,184,0.2)" }, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue("--text-sec").trim() } }
           }
         }
       });
@@ -1078,11 +1110,13 @@
           }]
         },
         options: {
+          devicePixelRatio: Math.max(window.devicePixelRatio || 1, 1.5),
           responsive: true,
           maintainAspectRatio: false,
+          animation: false,
+          font: { family: "'Segoe UI', 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif" },
           plugins: {
-            legend: { position: "top" },
-            title: { display: true, text: "Expense Category Distribution" }
+            legend: { position: "top", labels: { color: getComputedStyle(document.documentElement).getPropertyValue("--text").trim() } }
           }
         }
       });
